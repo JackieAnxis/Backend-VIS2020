@@ -10,7 +10,6 @@ from embeddings.get_cluster import get_cluster_label
 from deformation.main import generate
 from deformation.fuse import fuse_main
 from models.S3 import search_similar_structures
-from search.similar_structure import search as sim_struct_search
 from deformation.regal_alignment import get_regal_correspondence
 from deformation.knn_sim_alignment import get_knn_sim_correspondence
 
@@ -60,32 +59,6 @@ def compute():
     # return {
     #     'target_generated': json_graph.node_link_data(res)
     # }
-@app.route('/search-v2', methods=['POST'])
-def search2():
-    settings = json.loads(request.data)
-    dataset = settings['dataset']
-    # embedding_method = 'graphwave'
-    embedding_method = 'xnetmf'
-    # embedding_method = 'graphwave2'
-    # embedding_method = 'role2vec'
-    # embedding_method = 'walklets'
-    # embedding_method = 'walklets2'
-    path_prefix = './data/'
-    settings["embedding_path"] = path_prefix + dataset + '/' + embedding_method + '.csv'
-    settings["edgelist_path"] = path_prefix + dataset + '/graph.edgelist'
-    settings['model_path'] = path_prefix + dataset + '/model'
-    components = sim_struct_search(settings)
-
-    connected_components_subgraph = []
-    G = nx.read_edgelist(settings['edgelist_path'], nodetype=int,
-                     data=(('weight', float),))
-    for component in components:
-        node_list = component['nodes']
-        connected_components_subgraph.append(json_graph.node_link_data(G.subgraph(node_list)))
-
-    return {
-        'suggestions': connected_components_subgraph
-    }
 
 @app.route('/search', methods=['POST'])
 def search():
@@ -148,7 +121,7 @@ def apply_deformation():
     source_graph = json_graph.node_link_graph(settings['sourceGraph'])
     deformed_source_graph = json_graph.node_link_graph(settings['_sourceGraph'])
     target_graph = json_graph.node_link_graph(settings['targetGraph'])
-    deformed_target_graph_network = generate(markers, source_graph, deformed_source_graph, target_graph, correspondence)
+    deformed_target_graph_network = generate(markers, source_graph, deformed_source_graph, target_graph, correspondence, save_to_running=False)
     deformed_target_graph = json_graph.node_link_data(deformed_target_graph_network)
     return deformed_target_graph
 

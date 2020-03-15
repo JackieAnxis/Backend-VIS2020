@@ -2,15 +2,13 @@ import csv
 import json
 import networkx as nx
 from networkx.readwrite import json_graph
+from data.layout import layout
 
 def connected_component_subgraphs(G):
     for c in nx.connected_components(G):
         yield G.subgraph(c)
 
-# path = './bn-mouse-kasthuri/'
-# path = './email-Eu-core/'
-# path = './bio-DM-LC/'
-path = './VIS/'
+path = './data/bn-mouse-kasthuri/'
 
 G = nx.read_edgelist(path + "graph.edgelist", nodetype=int,
                      data=(('weight', float),))
@@ -21,8 +19,6 @@ id_map = {}
 i = 0
 for node in max_connected_component:
     id_map[node] = i
-    if not node == i:
-        print('false')
     i += 1
 
 H = nx.relabel_nodes(max_connected_component, id_map)
@@ -38,4 +34,9 @@ nx.write_edgelist(H, path + 'graph.edgelist', data=False)
 
 data = json_graph.node_link_data(H)
 with open(path + 'graph.json', 'w') as f:
+    json.dump(data, f)
+
+H = layout(H)
+data = json_graph.node_link_data(H)
+with open(path + 'graph-with-pos.json', 'w') as f:
     json.dump(data, f)

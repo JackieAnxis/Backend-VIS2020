@@ -22,6 +22,26 @@ def nx2tlp(G):
         graph.addEdge(nodes_map[edge[0]], nodes_map[edge[1]])
     return graph, nodes_map
 
+def overlap_removal(graph, layout):
+    # get a dictionnary filled with the default plugin parameters values
+    # graph is an instance of the tlp.Graph class
+    params = tlp.getDefaultPluginParameters('Fast Overlap Removal', graph)
+
+    # set any input parameter value if needed
+    # params['overlap removal type'] = ...
+    params['layout'] = layout
+    # params['bounding box'] = ...
+    # params['rotation'] = ...
+    # params['number of passes'] = ...
+    # params['x border'] = ...
+    # params['y border'] = ...
+
+    # either create or get a layout property from the graph to store the result of the algorithm
+    resultLayout = graph.getLayoutProperty('resultLayout')
+    success = graph.applyLayoutAlgorithm('Fast Overlap Removal', resultLayout, params)
+
+    return resultLayout
+
 def FM3(tlpgraph):
     # get a dictionnary filled with the default plugin parameters values
     # graph is an instance of the tlp.Graph class
@@ -57,15 +77,20 @@ def FM3(tlpgraph):
     # success = graph.applyLayoutAlgorithm('FM^3 (OGDF)', params)
     return resultLayout
 
-path = './bn-mouse-kasthuri/'
-filename = path + "graph.edgelist"
-G = nx.read_edgelist(filename, nodetype=int, data=(('weight', float),))
-G.to_undirected()
-graph, nodes_map = nx2tlp(G)
-resultLayout = FM3(graph)
-for n in G.nodes:
-    pos = resultLayout[nodes_map[n]]
-    G.nodes[n]['x'] = pos[0]
-    G.nodes[n]['y'] = pos[1]
-save_json_graph(G, path+'graph-with-pos.json')
-# if the plugin declare any output parameter, its value can now be retrieved in the 'params' dictionnary
+def layout(G):
+    graph, nodes_map = nx2tlp(G)
+    resultLayout = FM3(graph)
+    resultLayout = overlap_removal(graph, resultLayout)
+    for n in G.nodes:
+        pos = resultLayout[nodes_map[n]]
+        G.nodes[n]['x'] = pos[0]
+        G.nodes[n]['y'] = pos[1]
+    return G
+
+if __name__ == '__main__':
+    path = './bn-mouse-kasthuri/'
+    filename = path + "graph.edgelist"
+    G = nx.read_edgelist(filename, nodetype=int, data=(('weight', float),))
+    G.to_undirected()
+    G = layout(G)
+    save_json_graph(G, path+'graph-with-pos.json')

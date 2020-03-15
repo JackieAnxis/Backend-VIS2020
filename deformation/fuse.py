@@ -79,6 +79,8 @@ def target_length_weight(G, subgraphs, need_scaled, weights):
                     M[offset + 1, j * 2 + 1] += -weight # y
                     # target_d = G.nodes[i] - G.nodes[j]
                     target_d = subgraph.nodes[subgraph.id2index[node_0_id]] - subgraph.nodes[subgraph.id2index[node_1_id]]
+                    if (np.sum(np.isnan(target_d[:, np.newaxis] * weight))):
+                        print('overlap!', i, j)
                     C[offset: offset + 2] += target_d[:, np.newaxis] * weight
             elif (node_0_id in all_fused_nodes or node_1_id in all_fused_nodes) and _adj[i,j]:
                 # one or two nodes are the fused node, and the node pair is an edge
@@ -89,6 +91,8 @@ def target_length_weight(G, subgraphs, need_scaled, weights):
                 M[offset + 1, i * 2 + 1] = weight  # y
                 M[offset, j * 2] = -weight  # x
                 M[offset + 1, j * 2 + 1] = -weight  # y
+                if (np.sum(np.isnan(target_d[:, np.newaxis] * weight))):
+                    print('overlap!', i, j)
                 C[offset: offset + 2] = target_d[:, np.newaxis] * weight
             elif (node_0_id in all_fused_nodes or node_1_id in all_fused_nodes) and adj[i,j]:
                 # one or two nodes are the fused node, and the node pair is close in layout
@@ -99,6 +103,8 @@ def target_length_weight(G, subgraphs, need_scaled, weights):
                 M[offset + 1, i * 2 + 1] = weight  # y
                 M[offset, j * 2] = -weight  # x
                 M[offset + 1, j * 2 + 1] = -weight  # y
+                if (np.sum(np.isnan(target_d[:, np.newaxis] * weight))):
+                    print('overlap!', i, j)
                 C[offset: offset + 2] = target_d[:, np.newaxis] * weight
             else:
                 count[4] += 1
@@ -108,6 +114,8 @@ def target_length_weight(G, subgraphs, need_scaled, weights):
                 M[offset + 1, i * 2 + 1] = weight  # y
                 M[offset, j * 2] = -weight  # x
                 M[offset + 1, j * 2 + 1] = -weight  # y
+                if (np.sum(np.isnan(target_d[:, np.newaxis] * weight))):
+                    print('overlap!', i, j)
                 C[offset: offset + 2] = target_d[:, np.newaxis] * weight
             
             offset += 2
@@ -387,8 +395,8 @@ def generate_subgraph(prefix):
 
 
 if __name__ == '__main__':
-    # prefix = './data/bn-mouse-kasthuri/'
-    prefix = './data/VIS/'
+    prefix = './data/bn-mouse-kasthuri/'
+    # prefix = './data/VIS/'
 
     # main(prefix)
     G = load_json_graph(prefix + 'graph-with-pos.json')

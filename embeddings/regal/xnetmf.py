@@ -228,7 +228,7 @@ if __name__ == "__main__":
 		graph_file = "data/arenas_combined_edges.txt"
 	else:
 		graph_file = sys.argv[1]
-	path = './data/bio-CE-LC/'
+	path = './data/bn-mouse-kasthuri/'
 	graph_file = path + 'graph.edgelist'
 	nx_graph = nx.read_edgelist(graph_file, nodetype = int, comments="%")
 	representations = embed(nx_graph)
