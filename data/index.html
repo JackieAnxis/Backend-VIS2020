@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <style>
+        circle {
+            r: 3;
+            /* fill: royalblue; */
+        }
+
+        text {
+            font-size: 10px;
+        }
+
+        line {
+            stroke: rgb(211, 203, 183);
+            stroke-width: 1;
+        }
+    </style>
+</head>
+
+<body>
+    <svg id="container" width="1200" height="1200">
+    </svg>
+    <script src="./d3.v4.min.js"></script>
+    <script>
+        var path = './bn-mouse-kasthuri/'
+        addGraph('graph-with-pos', 50, 50, 450, 450)
+        addGraph('_new', 550, 50, 450, 450)
+        addGraph('new', 50, 550, 450, 450)
+        addGraph('subgraph', 550, 550, 100, 100)
+        // addGraph('4', 550, 550, 450, 450)
+
+        ids = [];
+        d3.select('#subgraph').selectAll('circle').each(d => ids.push(d.id));
+        d3.selectAll('circle').filter(d => ids.includes(d.id)).attr('fill', 'red')
+
+        function addGraph(name, x, y, width = 500, height = 500) {
+            var container = d3.select('#container')
+            var g = container.append('g')
+            g.attr('id', name).attr('transform', `translate(${x},${y})`)
+            g.append('text').text(name).attr('y', '-20')
+            d3.json(`${path}${name}.json`, function (error, graph) {
+                if (error) throw error;
+                var id2node = graph.nodes.reduce((id2node, node) => {
+                    id2node[node.id] = node
+                    return id2node
+                }, {})
+                var max = {
+                        x: d3.max(graph.nodes, node => node.x),
+                        y: d3.max(graph.nodes, node => node.y)
+                    },
+                    min = {
+                        x: d3.min(graph.nodes, node => node.x),
+                        y: d3.min(graph.nodes, node => node.y)
+                    }
+                // var scale = {
+                //     x: d3.scaleLinear().domain([min.x, max.x]).range([0, width]),
+                //     y: d3.scaleLinear().domain([min.y, max.y]).range([0, height])
+                // }
+                var scale = Math.min(width / (max.x - min.x), height / (max.y - min.y))
+                // var scale = {
+                //     x: d3.scaleLinear().domain([Math.min(min.x, min.y), Math.max(max.x, max.y)]).range([0,
+                //         width
+                //     ]),
+                //     y: d3.scaleLinear().domain([Math.min(min.x, min.y), Math.max(max.x, max.y)]).range([0,
+                //         height
+                //     ])
+                // }
+                graph.nodes.forEach(node => {
+                    node.x = scale * (node.x - min.x)
+                    node.y = scale * (node.y - min.y)
+                })
+                graph.links = graph.links.map(link => {
+                    return {
+                        source: id2node[link.source],
+                        target: id2node[link.target]
+                    }
+                })
+                var link = g.append("g")
+                    .attr("class", "links")
+                    .selectAll("line")
+                    .data(graph.links)
+                    .enter()
+                    .append("line")
+                    .attr("x1", function (d) {
+                        return d.source.x;
+                    })
+                    .attr("y1", function (d) {
+                        return d.source.y;
+                    })
+                    .attr("x2", function (d) {
+                        return d.target.x;
+                    })
+                    .attr("y2", function (d) {
+                        return d.target.y;
+                    })
+                    .attr("stroke", "rgb(211, 203, 183)")
+                    .attr("stroke-width", 1)
+
+                var node = g.append("g")
+                    .attr("class", "nodes")
+                    .selectAll("circle")
+                    .data(graph.nodes)
+                    .enter()
+                    .append("circle")
+                    .attr("r", 3)
+                    .attr('fill', 'royalblue')
+                    .attr('title', d => d.id)
+                    .attr("cx", function (d) {
+                        return d.x;
+                    })
+                    .attr("cy", function (d) {
+                        return d.y;
+                    })
+
+                // var text = g.append("g")
+                //     .attr("class", "titles")
+                //     .selectAll("circle")
+                //     .data(graph.nodes)
+                //     .enter()
+                //     .append("text")
+                //     .attr("x", function (d) {
+                //         return d.x + 5;
+                //     })
+                //     .attr("y", function (d) {
+                //         return d.y;
+                //     })
+                //     .text(d => d.id)
+            });
+
+        }
+    </script>
+</body>
+
+</html>

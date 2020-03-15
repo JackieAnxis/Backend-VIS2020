@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<canvas width="800" height="800"></canvas>
+<script src="./d3.v4.min.js"></script>
+<script>
+    var scale = 1,
+        max = {},
+        min = {}
+    var g
+    var canvas = document.querySelector("canvas"),
+        context = canvas.getContext("2d"),
+        width = canvas.width,
+        height = canvas.height;
+
+    var simulation = d3.forceSimulation()
+        .force("link", d3.forceLink().id(function (d) {
+            return d.id;
+        }))
+        .force("charge", d3.forceManyBody())
+        .force("center", d3.forceCenter(width / 2, height / 2));
+
+    function buildSubgraph() {
+        // build subgraph from tree version
+        d3.json('./subgraph.json', function (error, root) {
+            d3.csv('./id_map.csv', function (error, data) {
+                var id_map = data.reduce((r, d) => {
+                    r[d.raw_id] = d.new_id
+                    return r
+                }, {})
+                d3.csv('./author2id.csv', function (data) {
+                    var author2id = data.reduce((r, d) => {
+                        r[d.name] = d.id
+                        return r
+                    }, {})
+
+                    function buildGraph(father, graph) {
+                        if ('children' in father) {
+                            graph = father.children.reduce((result, child) => {
+                                var source = father.id.split('.').pop()
+                                var target = child.id.split('.').pop()
+                                graph.links.push({
+                                    source, //.split('.').pop(),
+                                    target, //.split('.').pop()
+                                })
+                                return buildGraph(child, graph)
+                            }, graph)
+                        }
+                        let id = father.id.split('.').pop()
+                        graph.nodes.push({
+                            id,
+                            x: father.x,
+                            y: father.y
+                        })
+
+                        return graph
+                    }
+                    graph = buildGraph(root, {
+                        nodes: [],
+                        links: []
+                    })
+
+                    graph.nodes = graph.nodes.map(node => {
+                        [node.x, node.y] = project(node.x, node.y);
+                        return {
+                            x: node.x,
+                            y: node.y,
+                            id: id_map[author2id[node.id]]
+                        }
+                    })
+                    graph.links = graph.links.map(link => {
+                        // link.source = link.source.split('.').pop()
+                        // link.target = link.target.split('.').pop()
+                        return {
+                            source: id_map[author2id[link.source]],
+                            target: id_map[author2id[link.target]]
+                        }
+                    })
+                    console.log(graph)
+                    console.log(JSON.stringify(graph))
+
+                    var id2node = graph.nodes.reduce((id2node, node) => {
+                        id2node[node.id] = node
+                        return id2node
+                    }, {})
+                    max = {
+                            x: d3.max(graph.nodes, node => node.x),
+                            y: d3.max(graph.nodes, node => node.y)
+                        },
+                        min = {
+                            x: d3.min(graph.nodes, node => node.x),
+                            y: d3.min(graph.nodes, node => node.y)
+                        }
+
+                    scale = Math.min(width / (max.x - min.x), height / (max.y - min.y))
+                    graph.nodes.forEach(node => {
+                        node.x = scale * (node.x - min.x)
+                        node.y = scale * (node.y - min.y)
+                    })
+                    graph.links = graph.links.map(link => {
+                        return {
+                            source: id2node[link.source],
+                            target: id2node[link.target]
+                        }
+                    })
+                    context.beginPath();
+                    graph.links.forEach(drawLink);
+                    context.strokeStyle = "#aaa";
+                    context.stroke();
+
+                    context.beginPath();
+                    graph.nodes.forEach(drawNode);
+                    context.fill();
+                    context.strokeStyle = "#fff";
+                    context.stroke();
+                })
+            })
+
+            function project(x, y) {
+                var angle = (x - 90) / 180 * Math.PI,
+                    radius = y;
+                return [radius * Math.cos(angle), radius * Math.sin(angle)];
+            }
+        })
+    }
+
+    // d3.json("graph.json", function (error, graph) {
+    //     if (error) throw error;
+    //     // id_map = id_map.reduce((result, tuple) => {
+    //     //     result[tuple[0]] = tuple[1]
+    //     //     return result
+    //     // }, {})
+    //     // graph.nodes = graph.nodes.map(node => ({
+    //     //     x: node.x,
+    //     //     y: node.y,
+    //     //     id: id_map[node.id]
+    //     // }))
+    //     // graph.links = graph.links.map(l => ({
+    //     //     source: id_map[l.source],
+    //     //     target: id_map[l.target],
+    //     // }))
+    //     console.log(JSON.stringify(graph))
+    //     var ended = false
+    //     simulation
+    //         .nodes(graph.nodes)
+    //         .on("tick", ticked)
+    //         .on('end', function () {
+    //             ended = true
+    //             graph.links = graph.links.map(l => ({
+    //                 source: l.source.id,
+    //                 target: l.target.id,
+    //             }))
+    //             console.log(JSON.stringify(graph))
+    //         });
+
+    //     simulation.force("link")
+    //         .links(graph.links);
+
+    //     d3.select(canvas)
+    //         .call(d3.drag()
+    //             .container(canvas)
+    //             .subject(dragsubject)
+    //             .on("start", dragstarted)
+    //             .on("drag", dragged)
+    //             .on("end", dragended));
+
+    //     function ticked() {
+    //         context.clearRect(0, 0, width, height);
+    //         max = {
+    //             x: d3.max(graph.nodes, node => node.x),
+    //             y: d3.max(graph.nodes, node => node.y)
+    //         };
+    //         min = {
+    //             x: d3.min(graph.nodes, node => node.x),
+    //             y: d3.min(graph.nodes, node => node.y)
+    //         }
+    //         // var scale = {
+    //         //     x: d3.scaleLinear().domain([min.x, max.x]).range([0, width]),
+    //         //     y: d3.scaleLinear().domain([min.y, max.y]).range([0, height])
+    //         // }
+    //         scale = Math.min(width / (max.x - min.x), height / (max.y - min.y))
+    //         graph.nodes.forEach(node => {
+    //             node.x = scale * (node.x - min.x)
+    //             node.y = scale * (node.y - min.y)
+    //         })
+
+
+    //         context.beginPath();
+    //         graph.links.forEach(drawLink);
+    //         context.strokeStyle = "#aaa";
+    //         context.stroke();
+
+    //         context.beginPath();
+    //         graph.nodes.forEach(drawNode);
+    //         context.fill();
+    //         context.strokeStyle = "#fff";
+    //         context.stroke();
+    //     }
+
+    //     function dragsubject() {
+    //         return simulation.find(d3.event.x, d3.event.y);
+    //     }
+    // });
+
+    function dragstarted() {
+        if (!d3.event.active) simulation.alphaTarget(0.3).restart();
+        d3.event.subject.fx = d3.event.subject.x;
+        d3.event.subject.fy = d3.event.subject.y;
+    }
+
+    function dragged() {
+        d3.event.subject.fx = d3.event.x;
+        d3.event.subject.fy = d3.event.y;
+    }
+
+    function dragended() {
+        if (!d3.event.active) simulation.alphaTarget(0);
+        d3.event.subject.fx = null;
+        d3.event.subject.fy = null;
+    }
+
+    function drawLink(d) {
+        var sx = d.source.x,
+            sy = d.source.y,
+            tx = d.target.x,
+            ty = d.target.y
+        // var sx = scale * (d.source.x - min.x),
+        //     sy = scale * (d.source.y - min.y),
+        //     tx = scale * (d.target.x - min.x),
+        //     ty = scale * (d.target.y - min.y);
+        context.moveTo(sx, sy);
+        context.lineTo(tx, ty);
+    }
+
+    function drawNode(d) {
+        var x = d.x,
+            y = d.y
+        // var x = scale * (d.x - min.x),
+        // y = scale * (d.y - min.y);
+        context.moveTo(x + 3, y);
+        context.arc(x, y, 3, 0, 2 * Math.PI);
+    }
+</script>
