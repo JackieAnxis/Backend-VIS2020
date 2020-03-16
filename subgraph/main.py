@@ -71,7 +71,7 @@ def is_point_in_polygon(point, points):
         point_start = point_end
     return flag
 
-def get_subgraph(points):
+def get_subgraph(points, r):
   name = 'bn-mouse-kasthuri'
   data_path = './data/' + name + '/graph-with-pos.json'
   with open(data_path) as graph_data:
@@ -87,7 +87,6 @@ def get_subgraph(points):
       inner_points.append(allnodes[i])
 
   # 对inner_points的每个点 加入半径为R范围内的点
-  r = 10
   enlarged_rect_bounds = get_rect_bounds(points_with_pos, r)
   res_points = []
   for i in range(0, len(allnodes)):
@@ -98,7 +97,6 @@ def get_subgraph(points):
       flag = False
       for j in range(0, len(inner_points)):
         dis = (inner_points[j]['x'] - allnodes[i]['x']) * (inner_points[j]['x'] - allnodes[i]['x']) + (inner_points[j]['y'] - allnodes[i]['y']) * (inner_points[j]['y'] - allnodes[i]['y'])
-        print(dis)
         if dis < r*r:
           flag = True
           break
