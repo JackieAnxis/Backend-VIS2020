@@ -12,6 +12,7 @@ from deformation.fuse import fuse_main
 from models.S3 import search_similar_structures
 from deformation.regal_alignment import get_regal_correspondence
 from deformation.knn_sim_alignment import get_knn_sim_correspondence
+from subgraph.main import get_subgraph
 
 app = Flask(__name__)
 CORS(app)
@@ -39,6 +40,14 @@ def whole_graph():
             # "cluster": cluster_label
         }
 
+@app.route('/sub-graph', methods=['POST'])
+def sub_graph():
+  settings = json.loads(request.data)
+  markers = settings['markers']
+  points = get_subgraph(markers)
+  return {
+    'data': points
+  }
 
 @app.route('/test')
 def test():
