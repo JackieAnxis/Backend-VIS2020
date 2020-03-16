@@ -75,7 +75,9 @@ def get_subgraph(points, r):
   name = 'bn-mouse-kasthuri'
   data_path = './data/' + name + '/graph-with-pos.json'
   with open(data_path) as graph_data:
-      allnodes = json.loads(graph_data.read())['nodes'] #allnodes是按id递增的顺序
+      graph = json.loads(graph_data.read())
+      allnodes = graph['nodes'] #allnodes是按id递增的顺序
+      alllinks = graph['links']
   points_with_pos = []
   for i in range(0, len(points)):
     points_with_pos.append(allnodes[int(points[i])])
@@ -89,6 +91,7 @@ def get_subgraph(points, r):
   # 对inner_points的每个点 加入半径为R范围内的点
   enlarged_rect_bounds = get_rect_bounds(points_with_pos, r)
   res_points = []
+  res_points_id = []
   for i in range(0, len(allnodes)):
     # 先过滤掉绝对不满足的点
     if not is_point_in_rect(allnodes[i], enlarged_rect_bounds):
@@ -102,5 +105,14 @@ def get_subgraph(points, r):
           break
       if flag:
         res_points.append(allnodes[i])
+        res_points_id.append(allnodes[i]['id'])
   # res_points = list(set(res_points))
-  return res_points
+  # 获取起点和终点均在res_points里的边
+  res_links = []
+  for i in range(0, len(alllinks)):
+    if alllinks[i]['source'] in res_points_id and alllinks[i]['target'] in res_points_id:
+      res_links.append(alllinks[i])
+  return {
+    'nodes': res_points,
+    'links': res_links
+  }
