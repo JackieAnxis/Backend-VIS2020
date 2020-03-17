@@ -10,44 +10,65 @@ def similarity_fitting(source_G, target_G, marker):
     target_marker_nodes = target_G.nodes[marker[:, 1], :].T # 2 * n
     source_center = np.mean(source_marker_nodes, axis=1)
     target_center = np.mean(target_marker_nodes, axis=1)
-    X = source_marker_nodes - source_center[:, np.newaxis]
-    Y = target_marker_nodes - target_center[:, np.newaxis]
-    S = Y.dot(X.T)
-    U, D, V = np.linalg.svd(S) # https://zhuanlan.zhihu.com/p/35893884
-    R = U.dot(V.T)
-    t = (source_center - target_center.dot(R.T))
-    # n = marker.shape[0]
-    # s = D.sum() * n / np.multiply(target_center, target_center).sum()
-    
-    # R.dot(X)+t = X'
-    for k in range(0, 2):
-        x0 = np.zeros((3, )) # R.size / 2 + t.size / 2
-        x0[0:2] = R[k, :]
-        x0[2] = t[k]
-
-        def resSimXform(x, A, B):
-            R = x[0:2]
-            t = x[2]
-            rot_A = B.copy()
-            rot_A[k,:] = R.dot(A) + t
-            result = np.sqrt(np.sum((B-rot_A)**2, axis=0))
-            return result
-        b = least_squares(fun=resSimXform, x0=x0, jac='2-point', method='lm', args=(target_marker_nodes, source_marker_nodes),
-                          ftol=1e-12, xtol=1e-12, gtol=1e-12, max_nfev=100000)
-        R[k, :] = b.x[0:2]
-        t[k] = b.x[2]
-    # V_hat = np.vstack((source_marker_nodes[:, 1] - source_marker_nodes[:, 0], source_marker_nodes[:, 2] - source_marker_nodes[:, 0])).T
-    # V = np.vstack((target_marker_nodes[:, 1] - target_marker_nodes[:, 0], target_marker_nodes[:, 2] - target_marker_nodes[:, 0])).T
-    # R = V_hat.dot(np.linalg.inv(V))
-    # t = source_marker_nodes[:, 1] - R.dot(target_marker_nodes[:, 1])
-
-    rotated_target_marker_nodes = R.dot(target_marker_nodes) + t[:, np.newaxis]
-    res = np.sum(np.sqrt(np.sum((source_marker_nodes - rotated_target_marker_nodes)**2, axis=1)))/source_marker_nodes.shape[1]
-
-    print("Alignment error is {}".format(res))
+    # X = source_marker_nodes - source_center[:, np.newaxis]
+    # Y = target_marker_nodes - target_center[:, np.newaxis]
+    # S = Y.dot(X.T)
+    # U, D, V = np.linalg.svd(S) # https://zhuanlan.zhihu.com/p/35893884
+    # R = U.dot(V.T)
+    # t = (source_center - target_center.dot(R.T))
+    #
+    # # R.dot(X)+t = X'
+    # for k in range(0, 2):
+    #     x0 = np.zeros((3, )) # R.size / 2 + t.size / 2
+    #     x0[0:2] = R[k, :]
+    #     x0[2] = t[k]
+    #
+    #     def resSimXform(x, A, B):
+    #         R = x[0:2]
+    #         t = x[2]
+    #         rot_A = B.copy()
+    #         rot_A[k,:] = R.dot(A) + t
+    #         result = np.sqrt(np.sum((B-rot_A)**2, axis=0))
+    #         return result
+    #     b = least_squares(fun=resSimXform, x0=x0, jac='2-point', method='lm', args=(target_marker_nodes, source_marker_nodes),
+    #                       ftol=1e-12, xtol=1e-12, gtol=1e-12, max_nfev=100000)
+    #     R[k, :] = b.x[0:2]
+    #     t[k] = b.x[2]
+    #
+    # rotated_target_marker_nodes = R.dot(target_marker_nodes) + t[:, np.newaxis]
+    # res = np.sum(np.sqrt(np.sum((source_marker_nodes - rotated_target_marker_nodes)**2, axis=1)))/source_marker_nodes.shape[1]
+    #
+    # print("Alignment error is {}".format(res))
     # print("Cost is {}".format(b.cost))
-    print(R)
-    print(t)
+
+    h = 0
+    s = 1
+    t = (source_center - target_center)
+
+    # R.dot(X)+t = X'
+    x0 = np.zeros((4,))  # R.size / 2 + t.size / 2
+    x0[0] = h
+    x0[1] = s
+    x0[2:4] = t
+
+    def resSimXform(x, A, B):
+        h = x[0]
+        s = x[1]
+        t = x[2:4]
+        R = np.array([[s, h], [-h, s]])
+        rot_A = R.dot(A) + t[:, np.newaxis]
+        result = np.sqrt(np.sum((B - rot_A) ** 2, axis=0))
+        return result
+
+    b = least_squares(fun=resSimXform, x0=x0, jac='2-point', method='lm',
+                      args=(target_marker_nodes, source_marker_nodes),
+                      ftol=1e-12, xtol=1e-12, gtol=1e-12, max_nfev=100000)
+
+    h = b.x[0]
+    s = b.x[1]
+    t = b.x[2:4]
+    R = np.array([[s, h], [-h, s]])
+
     return R, t
 
 def El_linear_system(source_G, target_G, marker, wl):
@@ -242,13 +263,44 @@ def find_closest_validpt(node, tree, K, max_dis):
     corresind = ind[0:K]
     return corresind
 
+def length_minimize(source_G, target_G, marker):
+    x0 = target_G.nodes.flatten()
+    x0[marker[:, 1] * 2] = source_G.nodes[marker[:, 0]][:, 0]
+    x0[marker[:, 1] * 2 + 1] = source_G.nodes[marker[:, 0]][:, 1]
+
+    pair_index = []
+    pair_expected_length = []
+    for i in range(0, target_G.nodes.shape[0]):
+        for j in range(i + 1, target_G.nodes.shape[0]):
+            if i in marker[:, 1] and j in marker[:, 1]:
+                source_marker_id_i = marker[:, 0][list(marker[:, 1]).index(i)]
+                source_marker_id_j = marker[:, 0][list(marker[:, 1]).index(j)]
+                pair_expected_length.append(source_G.nodes[source_marker_id_i] - source_G.nodes[source_marker_id_j])
+                pair_index.append([i, j, 1])
+            else:
+                pair_expected_length.append(target_G.nodes[i] - target_G.nodes[j])
+                pair_index.append([i, j, 1])
+    
+    pair_index = np.array(pair_index, dtype=np.int32)
+    pair_expected_length = np.sqrt(np.sum(np.array(pair_expected_length) ** 2, axis=1)) * pair_index[:, 2]
+    
+    def resSimXform(x, A, B):
+        x = x.reshape(((int(x.shape[0] / 2), 2)))
+        E1 = np.sum(((np.sqrt(np.sum((x[A[:, 0]] - x[A[:, 1]])**2, axis=1))) * A[:, 2] - B)**2)
+        # E2 = np.sum(np.sqrt(np.sum((x[marker[:, 1]] - source_G.nodes[marker[:, 0]])**2, axis=1)))
+        return E1 # + E2 * 1000
+    b = least_squares(fun=resSimXform, x0=x0, jac='2-point', method='trf', args=(pair_index, pair_expected_length),
+                        ftol=1e-12, xtol=1e-12, gtol=1e-12, max_nfev=100000)
+    
+    return b.x
+
 # def non_rigid_registration(source_G, target_G, ws, wi, wc, marker):
 def non_rigid_registration(source_G, target_G, ws, wi, wc, marker, K, max_dis):
     # change target into source
     source_G = source_G.copy()
-    source_G.normalize()
+    # source_G.normalize()
     target_G = target_G.copy()
-    target_G.normalize()
+    # target_G.normalize()
     marker[:, 0] = np.array([source_G.id2index[str(id)] for id in marker[:, 0]])
     marker[:, 1] = np.array([target_G.id2index[str(id)] for id in marker[:, 1]])
     R = np.array([[1,0],[0,1]])
@@ -260,6 +312,10 @@ def non_rigid_registration(source_G, target_G, ws, wi, wc, marker, K, max_dis):
     source_G.compute_third_node()
     target_edge_adj = target_G.find_adj_edges()
     target_G.build_elementary_cell()
+
+    # X = length_minimize(source_G, target_G, marker)
+    # target_G.nodes = X.reshape((target_G.nodes.shape[0], 2))
+
     # smooth
     ElM, ElC = El_linear_system(source_G, target_G, marker, ws)
     # EsM, EsC = Es_linear_system(source_G, target_G, target_edge_adj, marker, ws)
@@ -269,7 +325,7 @@ def non_rigid_registration(source_G, target_G, ws, wi, wc, marker, K, max_dis):
     C = np.vstack((ElC, EiC))
     X = sparse.linalg.lsqr(M, C, iter_lim=30000, atol=1e-8, btol=1e-8, conlim=1e7, show=False)
     target_G.nodes = X[0].reshape((target_G.new_nodes.shape[0], 2))[0:target_G.nodes.shape[0],:]
-    print(target_G.nodes)
+
     for i in range(0, len(wc)):
         ws += i * wc[i] / 1000
         target_G.compute_third_node()

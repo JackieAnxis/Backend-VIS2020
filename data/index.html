@@ -8,12 +8,12 @@
     <title>Document</title>
     <style>
         circle {
-            r: 3;
+            r: 1;
             /* fill: royalblue; */
         }
 
         text {
-            font-size: 10px;
+            font-size: 7px;
         }
 
         line {
@@ -24,33 +24,56 @@
 </head>
 
 <body>
-    <svg id="container" width="1200" height="1200">
+    <button
+        style="width: 40px; height: 15px; border-radius: 3px; font-size: 10px; position: fixed; top: 20px; right: 20px;"
+        id="toggleText">TEXT</button>
+    <svg id="container" width="1800" height="1200">
     </svg>
     <script src="./d3.v4.min.js"></script>
     <script>
-        var path = './bn-mouse-kasthuri/'
-        addGraph('graph-with-pos', 50, 50, 450, 450)
-        addGraph('_new', 550, 50, 450, 450)
-        addGraph('new', 50, 550, 450, 450)
-        addGraph('subgraph', 550, 550, 100, 100)
-        // addGraph('4', 550, 550, 450, 450)
+        // let path = './road-euroroad/'
+        let path = './power-662-bus/'
+        // let path = './road-chesapeake/'
+        addGraph('graph-with-pos', 50, 50, 800, 800)
+        addGraph('new', 1000, 50, 800, 800)
+        addGraph('source', 50, 820, 100, 100)
+        addGraph('_source', 50, 960, 100, 100)
+        addGraph('target0', 200, 820, 100, 100)
+        addGraph('_target0', 200, 960, 100, 100)
+        addGraph('target1', 350, 820, 100, 100)
+        addGraph('_target1', 350, 960, 100, 100)
+        addGraph('target2', 500, 820, 100, 100)
+        addGraph('_target2', 500, 960, 100, 100)
+        addGraph('target3', 650, 820, 100, 100)
+        addGraph('_target3', 650, 960, 100, 100)
+
+        let flag = true
+        d3.select('#toggleText').on('click', function () {
+            flag = !flag
+            let font = 'font-size: 0'
+            if (flag) {
+                font = 'font-size: 7px'
+            }
+            d3.selectAll('text').attr('style', font)
+        })
 
         ids = [];
         d3.select('#subgraph').selectAll('circle').each(d => ids.push(d.id));
         d3.selectAll('circle').filter(d => ids.includes(d.id)).attr('fill', 'red')
 
         function addGraph(name, x, y, width = 500, height = 500) {
-            var container = d3.select('#container')
-            var g = container.append('g')
+            let container = d3.select('#container')
+            let g = container.append('g')
             g.attr('id', name).attr('transform', `translate(${x},${y})`)
             g.append('text').text(name).attr('y', '-20')
+            g.append('rect').attr('width', width).attr('height', height).attr('fill', 'transparent')
             d3.json(`${path}${name}.json`, function (error, graph) {
                 if (error) throw error;
-                var id2node = graph.nodes.reduce((id2node, node) => {
+                let id2node = graph.nodes.reduce((id2node, node) => {
                     id2node[node.id] = node
                     return id2node
                 }, {})
-                var max = {
+                let max = {
                         x: d3.max(graph.nodes, node => node.x),
                         y: d3.max(graph.nodes, node => node.y)
                     },
@@ -58,12 +81,12 @@
                         x: d3.min(graph.nodes, node => node.x),
                         y: d3.min(graph.nodes, node => node.y)
                     }
-                // var scale = {
+                // let scale = {
                 //     x: d3.scaleLinear().domain([min.x, max.x]).range([0, width]),
                 //     y: d3.scaleLinear().domain([min.y, max.y]).range([0, height])
                 // }
-                var scale = Math.min(width / (max.x - min.x), height / (max.y - min.y))
-                // var scale = {
+                let scale = Math.min(width / (max.x - min.x), height / (max.y - min.y))
+                // let scale = {
                 //     x: d3.scaleLinear().domain([Math.min(min.x, min.y), Math.max(max.x, max.y)]).range([0,
                 //         width
                 //     ]),
@@ -72,8 +95,8 @@
                 //     ])
                 // }
                 graph.nodes.forEach(node => {
-                    node.x = scale * (node.x - min.x)
-                    node.y = scale * (node.y - min.y)
+                    node.px = node.x = scale * (node.x - min.x)
+                    node.py = node.y = scale * (node.y - min.y)
                 })
                 graph.links = graph.links.map(link => {
                     return {
@@ -81,7 +104,7 @@
                         target: id2node[link.target]
                     }
                 })
-                var link = g.append("g")
+                let link = g.append("g")
                     .attr("class", "links")
                     .selectAll("line")
                     .data(graph.links)
@@ -102,7 +125,7 @@
                     .attr("stroke", "rgb(211, 203, 183)")
                     .attr("stroke-width", 1)
 
-                var node = g.append("g")
+                let node = g.append("g")
                     .attr("class", "nodes")
                     .selectAll("circle")
                     .data(graph.nodes)
@@ -112,25 +135,25 @@
                     .attr('fill', 'royalblue')
                     .attr('title', d => d.id)
                     .attr("cx", function (d) {
-                        return d.x;
+                        return d.px;
                     })
                     .attr("cy", function (d) {
-                        return d.y;
+                        return d.py;
                     })
 
-                // var text = g.append("g")
-                //     .attr("class", "titles")
-                //     .selectAll("circle")
-                //     .data(graph.nodes)
-                //     .enter()
-                //     .append("text")
-                //     .attr("x", function (d) {
-                //         return d.x + 5;
-                //     })
-                //     .attr("y", function (d) {
-                //         return d.y;
-                //     })
-                //     .text(d => d.id)
+                let text = g.append("g")
+                    .attr("class", "titles")
+                    .selectAll("circle")
+                    .data(graph.nodes)
+                    .enter()
+                    .append("text")
+                    .attr("x", function (d) {
+                        return d.x + 5;
+                    })
+                    .attr("y", function (d) {
+                        return d.y;
+                    })
+                    .text(d => d.id)
             });
 
         }

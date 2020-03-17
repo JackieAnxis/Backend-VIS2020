@@ -8,11 +8,13 @@ def connected_component_subgraphs(G):
     for c in nx.connected_components(G):
         yield G.subgraph(c)
 
-path = './data/bn-mouse-kasthuri/'
+# path = './data/bn-mouse-kasthuri/'
+path = './data/power-662-bus/'
 
 G = nx.read_edgelist(path + "graph.edgelist", nodetype=int,
                      data=(('weight', float),))
 G.to_undirected()
+G.remove_edges_from(nx.selfloop_edges(G))
 max_connected_component = max(connected_component_subgraphs(G), key=len)
 
 id_map = {}

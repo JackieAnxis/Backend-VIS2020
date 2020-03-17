@@ -4,14 +4,11 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 from scipy import sparse
 import numpy as np
+import networkx as nx
 from scipy.optimize import least_squares
-# from utils import save_pickle_file, load_pickle_file, load_json_graph, save_json_graph
-# from rotate import calculate_T, rotate, third_node
-# from correspondence import non_rigid_registration, build_correspondence
-# from Graph import Graph
-from deformation.utils import save_pickle_file, load_pickle_file, load_json_graph, save_json_graph
-from deformation.rotate import calculate_T, rotate, third_node
-from deformation.correspondence import non_rigid_registration, build_correspondence, Ec_linear_system
+from deformation.fuse import fuse_main
+from deformation.utils import load_json_graph, save_json_graph
+from deformation.correspondence import non_rigid_registration, build_correspondence, similarity_fitting
 from deformation.Graph import Graph
 
 def affine_minimize(source_G, target_G, deformed_source_G, correspondences):
@@ -111,7 +108,10 @@ def direction_minimize(source_G, target_G, deformed_source_G, node_corrs, edge_c
 def distance_minimize(source_G, target_G, deformded_source_G, node_corrs, edge_corrs):
     def resSimXform(x, A, B):
         x = x.reshape(((int(x.shape[0] / 2), 2)))
-        return (np.sqrt(np.sum((x[A[:, 0]] - x[A[:, 1]])**2, axis=1))) - B
+        edges_length = (np.sqrt(np.sum((x[A[:, 0]] - x[A[:, 1]])**2, axis=1)))
+        E = edges_length - B
+        return E
+
     x0 = target_G.nodes.flatten()
     pair_index = []
     for i in range(0, target_G.nodes.shape[0]):
@@ -119,6 +119,7 @@ def distance_minimize(source_G, target_G, deformded_source_G, node_corrs, edge_c
             pair_index.append([i, j])
     pair_index = np.array(pair_index, dtype=np.int32)
     pair_expected_length = np.zeros((pair_index.shape[0]))
+
     for k in range(0, pair_index.shape[0]):
         i = pair_index[k][0]
         j = pair_index[k][1]
@@ -127,6 +128,7 @@ def distance_minimize(source_G, target_G, deformded_source_G, node_corrs, edge_c
         mean_direction = np.mean(deformded_source_G.nodes[c_i], axis=0) - np.mean(deformded_source_G.nodes[c_j], axis=0)
         mean_distance = np.sqrt(np.sum(mean_direction**2))
         pair_expected_length[k] = mean_distance
+
     b = least_squares(fun=resSimXform, x0=x0, jac='2-point', method='trf', args=(pair_index, pair_expected_length),
                         ftol=1e-12, xtol=1e-12, gtol=1e-12, max_nfev=100000)
     x = b.x
@@ -200,6 +202,9 @@ def generate(markers, source_graph, deformed_source_graph, target_graph, corresp
         wi = 1.0
         wc = [1, 500, 3000, 5000]
         reg_source_G, reg_target_G, R, t = non_rigid_registration(source_G, target_G, ws, wi, wc, marker, K, max_dis)
+
+        # return reg_target_G.to_networkx()
+
         iterations_count = 0
         max_iterations_count = 10
         while not fine:
@@ -218,11 +223,10 @@ def generate(markers, source_graph, deformed_source_graph, target_graph, corresp
                     break
                 else:
                     fine = True
-        print('correspondence:')
-        print(correspondence)
         # deformation transfer
         deformed_target_G = deformation_transfer(source_G, target_G, deformed_source_G, correspondence)
-        
+        R, t = similarity_fitting(target_G, deformed_target_G, np.array([[index, index] for index in deformed_target_G.index2id]))
+        deformed_source_G.nodes = deformed_source_G.nodes.dot(R.T) + t
         # simply calcualte the mean position
         # deformed_target_G = target_G.copy()
         # for i in range(0, len(correspondence)):
@@ -233,19 +237,110 @@ def generate(markers, source_graph, deformed_source_graph, target_graph, corresp
         save_json_graph(target_G.to_networkx(), prefix + 'target.json')
         save_json_graph(deformed_source_G.to_networkx(), prefix + '_source.json')
         save_json_graph(deformed_target_G.to_networkx(), prefix + '_target.json')
+
     return deformed_target_G.to_networkx()
 
 def main():
     # load source graph, deformed source graph and target graph
-    prefix = './data/test_running/'
-    source_graph = load_json_graph(prefix + 'source.json')
-    deformed_source_graph = load_json_graph(prefix + '_source.json')
-    target_graph = load_json_graph(prefix + 'target.json')
+    # prefix = './data/road-euroroad/'
+    prefix = './data/power-662-bus/'
+    G = load_json_graph(prefix + 'graph-with-pos.json')
+    cycles = nx.cycle_basis(G)
+    cycles = sorted(cycles, key = lambda c: len(c), reverse=True)
+    cycles = list(filter(lambda c: len(c) > 0 and len(c) < 20, cycles))
 
-    markers = [[64, 77], [34, 84], [104, 112]]
-    correspondence = []
-    deformed_target_graph_networkx = generate(markers, source_graph, deformed_source_graph, target_graph, correspondence, save_to_running=False)
-    save_json_graph(deformed_target_graph_networkx, prefix + '_target.json')
+    #### road-euroroad
+    # source_nodes = [86, 87, 88, 91, 135, 250, 249, 196, 193, 195, 192, 132, 126, 124]
+    # target_nodes = [353, 352, 351, 350, 347, 346, 349, 787, 786, 785, 575, 572, 573, 576, 577, 579, 357, 355]
+    # markers = [[192, 347], [86, 785], [91, 576], [249, 355]]
+    ####
+
+    #### power-662-bus
+    source_nodes = [462, 575, 589, 588, 477, 476, 466, 574]
+    target_nodes = [
+        # [78, 77, 79, 157, 156, 142],
+        [222, 220, 221, 257, 195, 194, 181, 182, 183, 245, 246],
+        # [121, 122, 173, 222, 246, 311, 171, 313, 435, 268, 123],
+        # [293, 133, 291, 304, 202, 201, 193, 247],
+        [482, 487, 580, 583, 488],
+        [135, 136, 11, 10, 12, 271, 273, 289, 290, 137],
+        [28, 30, 228, 306, 60, 59, 61, 317, 31]
+    ]
+    source_top_node = source_nodes[0]
+    target_top_node = [nodes[0] for nodes in target_nodes]
+    ####
+
+    source = nx.Graph(G.subgraph(source_nodes))
+    save_json_graph(source, prefix + 'source.json')
+    # save_json_graph(target, prefix + 'target.json')
+
+    markers = []
+    source_top_node_index = source_nodes.index(source_top_node)
+    for k in range(0, len(target_nodes)):
+        target_top_node_index = target_nodes[k].index(target_top_node[k])
+        marker = []
+        for i in range(0, 4):
+            source_marker_index = int(source_top_node_index + i * len(source_nodes) / 4) % len(source_nodes)
+            target_marker_index = int(target_top_node_index + i * len(target_nodes[k]) / 4) % len(target_nodes[k])
+            source_marker = source_nodes[source_marker_index]
+            target_marker = target_nodes[k][target_marker_index]
+            marker.append([source_marker, target_marker])
+        markers.append(marker)
+
+    #####
+    # [548, 47], [536, 45], [532, 76], [528, 82], [531, 155], [584, 227]
+
+    markers = [
+        # [[462, 79], [589, 156], [466, 77], [477, 142]],
+        [[462, 245], [589, 220], [466, 183], [477, 194]],
+        # [[462, 173], [589, 311], [466, 123], [477, 435]],
+        # [[462, 293], [589, 247], [466, 291], [477, 202]],
+        [[462, 488], [589, 482], [466, 583], [477, 487]],
+        [[462, 137], [589, 289], [466, 11], [477, 12]],
+        [[462, 317], [589, 59], [466, 28], [477, 306]],
+    ]
+    #####
+
+    G = Graph(G)
+    # deform the source graph #
+    cycle_source_nodes = np.array([G.id2index[str(id)] for id in source_nodes])
+    center = np.mean(G.nodes[cycle_source_nodes], axis=0)
+    radius = np.mean(np.sqrt(np.sum((G.nodes[cycle_source_nodes] - center)**2, axis=1)))
+
+    deformed_source = source.copy()
+    begin_node = G.id2index[str(source_top_node)]
+    begin_index = np.nonzero(cycle_source_nodes == begin_node)[0]
+    interval = 2.0 * np.pi / (cycle_source_nodes.shape[0])
+    for i in range(0, cycle_source_nodes.shape[0]):
+        index = int((begin_index + i) % cycle_source_nodes.shape[0])
+        x =  center[0] + radius * np.sin(interval * i)
+        y =  center[1] - radius * np.cos(interval * i)
+        id = int(G.index2id[cycle_source_nodes[index]])
+        deformed_source.nodes[id]['x'] = x
+        deformed_source.nodes[id]['y'] = y
+
+    save_json_graph(deformed_source, prefix + '_source.json')
+
+    deformed_targets = [deformed_source]
+    for k in range(0, len(target_nodes)):
+        target = nx.Graph(nx.subgraph(G.rawgraph, [str(id) for id in target_nodes[k]]))
+        save_json_graph(target, prefix + 'target' + str(k) + '.json')
+        correspondence = []
+        deformed_target = generate(markers[k], source, deformed_source, target, correspondence, save_to_running=False)
+        deformed_targets.append(deformed_target)
+        save_json_graph(deformed_target, prefix + '_target' + str(k) + '.json')
+    fused_graph = fuse_main(G.rawgraph, deformed_targets)
+    save_json_graph(fused_graph, prefix + 'new.json')
+
+
+    # source_graph = load_json_graph(prefix + 'source.json')
+    # deformed_source_graph = load_json_graph(prefix + '_source.json')
+    # target_graph = load_json_graph(prefix + 'target.json')
+    #
+    # markers = [[64, 77], [34, 84], [104, 112]]
+    # correspondence = []
+    # deformed_target_graph_networkx = generate(markers, source_graph, deformed_source_graph, target_graph, correspondence, save_to_running=False)
+    # save_json_graph(deformed_target_graph_networkx, prefix + '_target.json')
 
 
 

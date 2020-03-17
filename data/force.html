@@ -1,242 +1,185 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
-<canvas width="800" height="800"></canvas>
-<script src="./d3.v4.min.js"></script>
+<style>
+    .links line {
+        stroke: #999;
+        stroke-opacity: 0.6;
+    }
+
+    .nodes circle {
+        stroke: black;
+        stroke-width: 0px;
+    }
+</style>
+
+<body></body>
+<script src="https://d3js.org/d3.v5.min.js"></script>
 <script>
-    var scale = 1,
-        max = {},
-        min = {}
-    var g
-    var canvas = document.querySelector("canvas"),
-        context = canvas.getContext("2d"),
-        width = canvas.width,
-        height = canvas.height;
+    function layout(graph, fixedNodes = [], width = 300, height = 300) {
+        var svg = d3.select("body").append('svg').attr('width', width).attr('height', height)
 
-    var simulation = d3.forceSimulation()
-        .force("link", d3.forceLink().id(function (d) {
-            return d.id;
-        }))
-        .force("charge", d3.forceManyBody())
-        .force("center", d3.forceCenter(width / 2, height / 2));
+        var radius = 5;
 
-    function buildSubgraph() {
-        // build subgraph from tree version
-        d3.json('./subgraph.json', function (error, root) {
-            d3.csv('./id_map.csv', function (error, data) {
-                var id_map = data.reduce((r, d) => {
-                    r[d.raw_id] = d.new_id
-                    return r
-                }, {})
-                d3.csv('./author2id.csv', function (data) {
-                    var author2id = data.reduce((r, d) => {
-                        r[d.name] = d.id
-                        return r
-                    }, {})
-
-                    function buildGraph(father, graph) {
-                        if ('children' in father) {
-                            graph = father.children.reduce((result, child) => {
-                                var source = father.id.split('.').pop()
-                                var target = child.id.split('.').pop()
-                                graph.links.push({
-                                    source, //.split('.').pop(),
-                                    target, //.split('.').pop()
-                                })
-                                return buildGraph(child, graph)
-                            }, graph)
-                        }
-                        let id = father.id.split('.').pop()
-                        graph.nodes.push({
-                            id,
-                            x: father.x,
-                            y: father.y
-                        })
-
-                        return graph
-                    }
-                    graph = buildGraph(root, {
-                        nodes: [],
-                        links: []
-                    })
-
-                    graph.nodes = graph.nodes.map(node => {
-                        [node.x, node.y] = project(node.x, node.y);
-                        return {
-                            x: node.x,
-                            y: node.y,
-                            id: id_map[author2id[node.id]]
-                        }
-                    })
-                    graph.links = graph.links.map(link => {
-                        // link.source = link.source.split('.').pop()
-                        // link.target = link.target.split('.').pop()
-                        return {
-                            source: id_map[author2id[link.source]],
-                            target: id_map[author2id[link.target]]
-                        }
-                    })
-                    console.log(graph)
-                    console.log(JSON.stringify(graph))
-
-                    var id2node = graph.nodes.reduce((id2node, node) => {
-                        id2node[node.id] = node
-                        return id2node
-                    }, {})
-                    max = {
-                            x: d3.max(graph.nodes, node => node.x),
-                            y: d3.max(graph.nodes, node => node.y)
-                        },
-                        min = {
-                            x: d3.min(graph.nodes, node => node.x),
-                            y: d3.min(graph.nodes, node => node.y)
-                        }
-
-                    scale = Math.min(width / (max.x - min.x), height / (max.y - min.y))
-                    graph.nodes.forEach(node => {
-                        node.x = scale * (node.x - min.x)
-                        node.y = scale * (node.y - min.y)
-                    })
-                    graph.links = graph.links.map(link => {
-                        return {
-                            source: id2node[link.source],
-                            target: id2node[link.target]
-                        }
-                    })
-                    context.beginPath();
-                    graph.links.forEach(drawLink);
-                    context.strokeStyle = "#aaa";
-                    context.stroke();
-
-                    context.beginPath();
-                    graph.nodes.forEach(drawNode);
-                    context.fill();
-                    context.strokeStyle = "#fff";
-                    context.stroke();
-                })
-            })
-
-            function project(x, y) {
-                var angle = (x - 90) / 180 * Math.PI,
-                    radius = y;
-                return [radius * Math.cos(angle), radius * Math.sin(angle)];
+        let max = {
+                x: d3.max(graph.nodes, node => node.x),
+                y: d3.max(graph.nodes, node => node.y)
+            },
+            min = {
+                x: d3.min(graph.nodes, node => node.x),
+                y: d3.min(graph.nodes, node => node.y)
             }
+        let scale = Math.min(width / (max.x - min.x), height / (max.y - min.y))
+
+        graph.nodes.forEach(node => {
+            node.sx = node.x = scale * (node.x - min.x)
+            node.sy = node.y = scale * (node.y - min.y)
         })
+
+        var simulation = d3.forceSimulation()
+            .force("link", d3.forceLink().id(function (d) {
+                return d.id;
+            }))
+            .force("charge", d3.forceManyBody())
+            .force("center", d3.forceCenter(width / 2, height / 2));
+
+        simulation
+            .nodes(graph.nodes)
+            .on("tick", tickActions);
+
+        simulation.force("link")
+            .links(graph.links);
+
+        //add encompassing group for the zoom 
+        var g = svg.append("g")
+            .attr("class", "everything");
+
+        //draw lines for the links 
+        var link = g.append("g")
+            .attr("class", "links")
+            .selectAll("line")
+            .data(graph.links)
+            .enter().append("line")
+            .attr("stroke-width", 2)
+            .style("stroke", linkColour);
+
+        //draw circles for the nodes 
+        var node = g.append("g")
+            .attr("class", "nodes")
+            .selectAll("circle")
+            .data(graph.nodes)
+            .enter()
+            .append("circle")
+            .attr("r", radius)
+            .attr("fill", circleColour);
+
+
+        //add drag capabilities  
+        var drag_handler = d3.drag()
+            .on("start", drag_start)
+            .on("drag", drag_drag)
+            .on("end", drag_end);
+
+        drag_handler(node);
+
+
+        //add zoom capabilities 
+        var zoom_handler = d3.zoom()
+            .on("zoom", zoom_actions);
+
+        zoom_handler(svg);
+
+        /** Functions **/
+
+        //Function to choose what color circle we have
+        //Let's return blue for males and red for females
+        function circleColour(d) {
+            if (d.sex == "M") {
+                return "blue";
+            } else {
+                return "pink";
+            }
+        }
+
+        //Function to choose the line colour and thickness 
+        //If the link type is "A" return green 
+        //If the link type is "E" return red 
+        function linkColour(d) {
+            if (d.type == "A") {
+                return "green";
+            } else {
+                return "red";
+            }
+        }
+
+        //Drag functions 
+        //d is the node 
+        function drag_start(d) {
+            if (!d3.event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+
+        //make sure you can't drag the circle outside the box
+        function drag_drag(d) {
+            d.fx = d3.event.x;
+            d.fy = d3.event.y;
+        }
+
+        function drag_end(d) {
+            if (!d3.event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
+
+        //Zoom functions 
+        function zoom_actions() {
+            g.attr("transform", d3.event.transform)
+        }
+
+        function tickActions() {
+            graph.nodes.forEach(d => {
+                if (fixedNodes.includes(+d.id) || fixedNodes.includes("" + d.id)) {
+                    d.x = d.sx
+                    d.y = d.sy
+                }
+            })
+            //update circle positions each tick of the simulation 
+            node
+                .attr("cx", function (d) {
+                    return d.x;
+                })
+                .attr("cy", function (d) {
+                    return d.y;
+                });
+
+            //update link positions 
+            link
+                .attr("x1", function (d) {
+                    return d.source.x;
+                })
+                .attr("y1", function (d) {
+                    return d.source.y;
+                })
+                .attr("x2", function (d) {
+                    return d.target.x;
+                })
+                .attr("y2", function (d) {
+                    return d.target.y;
+                });
+        }
     }
+    (async function () {
+        let path = './power-662-bus/'
+        let filename = '_target0.json'
+        let graph = await d3.json(`${path}${filename}`)
+        layout(graph, [257, 222, 245, 181])
 
-    // d3.json("graph.json", function (error, graph) {
-    //     if (error) throw error;
-    //     // id_map = id_map.reduce((result, tuple) => {
-    //     //     result[tuple[0]] = tuple[1]
-    //     //     return result
-    //     // }, {})
-    //     // graph.nodes = graph.nodes.map(node => ({
-    //     //     x: node.x,
-    //     //     y: node.y,
-    //     //     id: id_map[node.id]
-    //     // }))
-    //     // graph.links = graph.links.map(l => ({
-    //     //     source: id_map[l.source],
-    //     //     target: id_map[l.target],
-    //     // }))
-    //     console.log(JSON.stringify(graph))
-    //     var ended = false
-    //     simulation
-    //         .nodes(graph.nodes)
-    //         .on("tick", ticked)
-    //         .on('end', function () {
-    //             ended = true
-    //             graph.links = graph.links.map(l => ({
-    //                 source: l.source.id,
-    //                 target: l.target.id,
-    //             }))
-    //             console.log(JSON.stringify(graph))
-    //         });
+        filename = 'target1.json'
+        graph = await d3.json(`${path}${filename}`)
+        layout(graph)
 
-    //     simulation.force("link")
-    //         .links(graph.links);
-
-    //     d3.select(canvas)
-    //         .call(d3.drag()
-    //             .container(canvas)
-    //             .subject(dragsubject)
-    //             .on("start", dragstarted)
-    //             .on("drag", dragged)
-    //             .on("end", dragended));
-
-    //     function ticked() {
-    //         context.clearRect(0, 0, width, height);
-    //         max = {
-    //             x: d3.max(graph.nodes, node => node.x),
-    //             y: d3.max(graph.nodes, node => node.y)
-    //         };
-    //         min = {
-    //             x: d3.min(graph.nodes, node => node.x),
-    //             y: d3.min(graph.nodes, node => node.y)
-    //         }
-    //         // var scale = {
-    //         //     x: d3.scaleLinear().domain([min.x, max.x]).range([0, width]),
-    //         //     y: d3.scaleLinear().domain([min.y, max.y]).range([0, height])
-    //         // }
-    //         scale = Math.min(width / (max.x - min.x), height / (max.y - min.y))
-    //         graph.nodes.forEach(node => {
-    //             node.x = scale * (node.x - min.x)
-    //             node.y = scale * (node.y - min.y)
-    //         })
-
-
-    //         context.beginPath();
-    //         graph.links.forEach(drawLink);
-    //         context.strokeStyle = "#aaa";
-    //         context.stroke();
-
-    //         context.beginPath();
-    //         graph.nodes.forEach(drawNode);
-    //         context.fill();
-    //         context.strokeStyle = "#fff";
-    //         context.stroke();
-    //     }
-
-    //     function dragsubject() {
-    //         return simulation.find(d3.event.x, d3.event.y);
-    //     }
-    // });
-
-    function dragstarted() {
-        if (!d3.event.active) simulation.alphaTarget(0.3).restart();
-        d3.event.subject.fx = d3.event.subject.x;
-        d3.event.subject.fy = d3.event.subject.y;
-    }
-
-    function dragged() {
-        d3.event.subject.fx = d3.event.x;
-        d3.event.subject.fy = d3.event.y;
-    }
-
-    function dragended() {
-        if (!d3.event.active) simulation.alphaTarget(0);
-        d3.event.subject.fx = null;
-        d3.event.subject.fy = null;
-    }
-
-    function drawLink(d) {
-        var sx = d.source.x,
-            sy = d.source.y,
-            tx = d.target.x,
-            ty = d.target.y
-        // var sx = scale * (d.source.x - min.x),
-        //     sy = scale * (d.source.y - min.y),
-        //     tx = scale * (d.target.x - min.x),
-        //     ty = scale * (d.target.y - min.y);
-        context.moveTo(sx, sy);
-        context.lineTo(tx, ty);
-    }
-
-    function drawNode(d) {
-        var x = d.x,
-            y = d.y
-        // var x = scale * (d.x - min.x),
-        // y = scale * (d.y - min.y);
-        context.moveTo(x + 3, y);
-        context.arc(x, y, 3, 0, 2 * Math.PI);
-    }
+        filename = 'target2.json'
+        graph = await d3.json(`${path}${filename}`)
+        layout(graph)
+    })();
 </script>

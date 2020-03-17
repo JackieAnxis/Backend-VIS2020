@@ -249,7 +249,7 @@ def fuse_v2(G, subgraphs, need_scaled, weights):
 
 def fuse_v4(G, subgraphs, need_scaled, weights):
     G = G.copy()
-    G.normalize()
+    # G.normalize()
     radius = cal_radius(G)
     
     fused_nodes_dict = {}
@@ -344,7 +344,7 @@ def fuse_main(G, subgraphs):
     weights = []
     for i in range(0, len(subgraphs)):
       subgraphs[i] = Graph(subgraphs[i])
-      need_scaled.append(True)
+      need_scaled.append(False)
       weights.append(15)
     time_start = time.time()
     new_G,_new_G = fuse_v4(Graph(G), subgraphs, need_scaled, weights)

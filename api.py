@@ -25,9 +25,10 @@ def hello_world():
 @app.route('/whole-graph')
 def whole_graph():
     # name = 'VIS'
-    name = 'bn-mouse-kasthuri'
+    # name = 'bn-mouse-kasthuri'
     # name = 'email-Eu-core'
     # name = 'bio-DM-LC'
+    name = 'road-euroroad'
 
     # data_path = './data/' + name + '/graph.json'
     data_path = './data/' + name + '/graph-with-pos.json'
