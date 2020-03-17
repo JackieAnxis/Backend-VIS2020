@@ -44,10 +44,9 @@ def whole_graph():
 def sub_graph():
   settings = json.loads(request.data)
   markers = settings['markers']
-  points = get_subgraph(markers)
-  return {
-    'data': points
-  }
+  r = 10
+  graph = get_subgraph(markers, r)
+  return graph
 
 @app.route('/test')
 def test():
