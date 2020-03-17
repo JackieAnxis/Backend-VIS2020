@@ -109,8 +109,8 @@ def search():
 @app.route('/apply-deformation', methods=['POST'])
 def apply_deformation():
     settings = json.loads(request.data)
-    markers = settings['autoMarkers']
-    # markers = settings['manualMarkers']
+    # markers = settings['autoMarkers']
+    markers = settings['manualMarkers']
     # Method1: using knn components mapping
     # correspondence = get_knn_sim_correspondence(settings['nodeMaps'], settings['sourceGraph'], settings['targetGraph'])
     # print('correspondence:')
