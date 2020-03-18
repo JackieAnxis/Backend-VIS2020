@@ -201,28 +201,45 @@ def generate(markers, source_graph, deformed_source_graph, target_graph, corresp
         ws = 5.0  # smooth
         wi = 1.0
         wc = [1, 500, 3000, 5000]
-        reg_source_G, reg_target_G, R, t = non_rigid_registration(source_G, target_G, ws, wi, wc, marker, K, max_dis)
 
-        # return reg_target_G.to_networkx()
-
-        iterations_count = 0
-        max_iterations_count = 10
-        while not fine:
+        marker[:, 0] = np.array([source_G.id2index[str(id)] for id in marker[:, 0]])
+        marker[:, 1] = np.array([target_G.id2index[str(id)] for id in marker[:, 1]])
+        marker_increasing = True
+        while marker_increasing:
+            reg_source_G, reg_target_G, R, t = non_rigid_registration(source_G, target_G, ws, wi, wc, marker, K,
+                                                                      max_dis)
             correspondence = build_correspondence(reg_source_G, reg_target_G, K, max_dis)
-            iterations_count += 1
-            if iterations_count > max_iterations_count:
-                print('Too musch iterations on building correspondence')
-            for cor in correspondence:
-                if cor.shape[0] < 1:  # some target node has no correspondence
-                    if K > 5:
-                        max_dis += 0.1
-                        fine = False
-                        break
-                    K += 1
-                    fine = False
-                    break
-                else:
-                    fine = True
+            if correspondence.shape[0] <= marker.shape[0]:
+                marker_increasing = False
+            marker = correspondence
+
+        reg_source_G, reg_target_G, R, t = non_rigid_registration(deformed_source_G, target_G, ws, wi, wc, correspondence, K, max_dis)
+
+        # correspondence[:, 0] = np.array([source_G.index2id[id] for id in marker[:, 0]])
+        # correspondence[:, 1] = np.array([target_G.index2id[id] for id in marker[:, 1]])
+
+        return reg_target_G.to_networkx()
+
+        # iterations_count = 0
+        # max_iterations_count = 10
+        # while not fine:
+        #     correspondence = build_correspondence(reg_source_G, reg_target_G, K, max_dis)
+        #     iterations_count += 1
+        #     if iterations_count > max_iterations_count:
+        #         print('Too musch iterations on building correspondence')
+        #     for cor in correspondence:
+        #         if cor.shape[0] < 1:  # some target node has no correspondence
+        #             if K > 5:
+        #                 max_dis += 0.1
+        #                 fine = False
+        #                 break
+        #             K += 1
+        #             fine = False
+        #             break
+        #         else:
+        #             fine = True
+
+
         # deformation transfer
         deformed_target_G = deformation_transfer(source_G, target_G, deformed_source_G, correspondence)
         R, t = similarity_fitting(target_G, deformed_target_G, np.array([[index, index] for index in deformed_target_G.index2id]))
@@ -258,10 +275,7 @@ def main():
     #### power-662-bus
     source_nodes = [462, 575, 589, 588, 477, 476, 466, 574]
     target_nodes = [
-        # [78, 77, 79, 157, 156, 142],
         [222, 220, 221, 257, 195, 194, 181, 182, 183, 245, 246],
-        # [121, 122, 173, 222, 246, 311, 171, 313, 435, 268, 123],
-        # [293, 133, 291, 304, 202, 201, 193, 247],
         [482, 487, 580, 583, 488],
         [135, 136, 11, 10, 12, 271, 273, 289, 290, 137],
         [28, 30, 228, 306, 60, 59, 61, 317, 31]
@@ -291,12 +305,9 @@ def main():
     # [548, 47], [536, 45], [532, 76], [528, 82], [531, 155], [584, 227]
 
     markers = [
-        # [[462, 79], [589, 156], [466, 77], [477, 142]],
-        [[462, 245], [589, 220], [466, 183], [477, 194]],
-        # [[462, 173], [589, 311], [466, 123], [477, 435]],
-        # [[462, 293], [589, 247], [466, 291], [477, 202]],
-        [[462, 488], [589, 482], [466, 583], [477, 487]],
-        [[462, 137], [589, 289], [466, 11], [477, 12]],
+        [[462, 246], [589, 220], [466, 182], [477, 194]],
+        [[462, 488], [589, 482], [476, 580]],
+        [[462, 137], [589, 289], [466, 11], [477, 12], [588, 271]],
         [[462, 317], [589, 59], [466, 28], [477, 306]],
     ]
     #####

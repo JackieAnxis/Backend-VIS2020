@@ -3,6 +3,7 @@ import numpy as np
 from scipy import sparse
 from scipy.optimize import least_squares
 from scipy.spatial import KDTree
+from hopcroftkarp import HopcroftKarp
 
 
 def similarity_fitting(source_G, target_G, marker):
@@ -71,6 +72,36 @@ def similarity_fitting(source_G, target_G, marker):
 
     return R, t
 
+
+def aligning(source_G, target_G, markers):
+    # R = [[ s, h, x]
+    #      [-h, s, y]
+    #      [ 0, 0, 1]]
+    # X = [s, h, tx, ty]
+    # [x  y 0 1]
+    # [y -x 1 0] dot [s h x y].T
+    #     ...
+    k = 4 # [s, h, tx, ty]
+    M = np.zeros((markers.shape[0] * 2, k))
+    C = np.zeros((markers.shape[0] * 2, 1))
+
+    source_marker_nodes = source_G.nodes[markers[:, 0], :]
+    target_marker_nodes = target_G.nodes[markers[:, 1], :]
+    for i in range(0, markers.shape[0]):
+        x = target_marker_nodes[i][0]
+        y = target_marker_nodes[i][1]
+        M[i * 2] = np.array([x, y, 1, 0])
+        M[i * 2 + 1] = np.array([y, -x, 0, 1])
+        C[i * 2:i * 2 + 2] = source_marker_nodes[i][:, np.newaxis]
+
+    X = sparse.linalg.lsqr(M, C, iter_lim=30000, atol=1e-8, btol=1e-8, conlim=1e7, show=False)
+
+    s = X[0][0]
+    h = X[0][1]
+    t = X[0][2:]
+    R = np.array([[s, h], [-h, s]])
+    return R, t
+
 def El_linear_system(source_G, target_G, marker, wl):
     target_G.compute_adjacent_matrix()
     L = target_G.rw_laplacian_matrix(target_G.adj_matrix)
@@ -130,9 +161,9 @@ def El_linear_system(source_G, target_G, marker, wl):
 
     constraint_coef = np.matrix(constraint_coef)
 
-    A = np.vstack([wl * LS, 2 * wl * constraint_coef])
+    A = np.vstack([wl * LS, wl * constraint_coef * 1000])
     M = sparse.coo_matrix(A)
-    C = 2 * wl * C
+    C = wl * C * 1000
     return M, C
 
 
@@ -235,6 +266,7 @@ def Ec_linear_system(source_G, target_G, marker, wc, K, max_dis):
             # valid_node = find_closest_validpt(node, source_G.nodes) # TODO
             valid_nodes = find_closest_validpt(node, source_tree, K, max_dis) # TODO
         # C[np.linspace(0, 1, 2, dtype=np.int32)+i*2] = wc * source_G.nodes[valid_node, :].T
+        print(target_G.index2id[i], [source_G.index2id[index] for index in valid_nodes])
         C[np.linspace(0, 1, 2, dtype=np.int32)+i*2] = wc * np.mean(source_G.nodes[valid_nodes, :], axis=0)[:, np.newaxis]
     # value = np.tile(wc, [3*target_nodes_count, 1])
     # row = np.arange(0, 3*target_nodes_count)
@@ -252,11 +284,9 @@ def Ec_linear_system(source_G, target_G, marker, wc, K, max_dis):
 #     ind = np.argsort(d) # sort accord to the distance between spt and vpts
 #     return np.array([ind[0]])
 def find_closest_validpt(node, tree, K, max_dis):
-    _, corresind = tree.query(node, k=K, distance_upper_bound=max_dis)
-    corresind = corresind[corresind >= 0]
-    corresind = corresind[corresind < tree.data.shape[0]]
-    # intersection angle: x0*x1+y0*y1
-    # inter_angles = np.sum(np.tile(G.perpendicular[i], [corresind.shape[0], 1])*search_G.perpendicular[corresind], axis=1)
+    # _, corresind = tree.query(node, k=K, distance_upper_bound=max_dis)
+    # corresind = corresind[corresind >= 0]
+    # corresind = corresind[corresind < tree.data.shape[0]]
 
     d = np.sum((np.tile(node, [tree.data.shape[0], 1]) - tree.data)**2, axis=1) # distances
     ind = np.argsort(d) # sort accord to the distance between spt and vpts
@@ -301,16 +331,15 @@ def non_rigid_registration(source_G, target_G, ws, wi, wc, marker, K, max_dis):
     # source_G.normalize()
     target_G = target_G.copy()
     # target_G.normalize()
-    marker[:, 0] = np.array([source_G.id2index[str(id)] for id in marker[:, 0]])
-    marker[:, 1] = np.array([target_G.id2index[str(id)] for id in marker[:, 1]])
     R = np.array([[1,0],[0,1]])
     t = np.array([0,0])
     # # TODO NEXT TWO LINES NEED TO BE REVOVERY!
-    R, t = similarity_fitting(source_G, target_G, marker)
+    # R, t = similarity_fitting(source_G, target_G, marker)
+    R, t = aligning(source_G, target_G, marker)
     target_G.nodes = target_G.nodes.dot(R.T) + t
     target_G.compute_third_node()
     source_G.compute_third_node()
-    target_edge_adj = target_G.find_adj_edges()
+    # target_edge_adj = target_G.find_adj_edges()
     target_G.build_elementary_cell()
 
     # X = length_minimize(source_G, target_G, marker)
@@ -321,12 +350,13 @@ def non_rigid_registration(source_G, target_G, ws, wi, wc, marker, K, max_dis):
     # EsM, EsC = Es_linear_system(source_G, target_G, target_edge_adj, marker, ws)
     # identity
     EiM, EiC = Ei_linear_system(source_G, target_G, wi)
-    M = sparse.vstack([ElM, EiM])
-    C = np.vstack((ElC, EiC))
+    M = sparse.vstack([ElM, EiM * 0])
+    C = np.vstack((ElC, EiC * 0))
     X = sparse.linalg.lsqr(M, C, iter_lim=30000, atol=1e-8, btol=1e-8, conlim=1e7, show=False)
     target_G.nodes = X[0].reshape((target_G.new_nodes.shape[0], 2))[0:target_G.nodes.shape[0],:]
 
     for i in range(0, len(wc)):
+        print('#####')
         ws += i * wc[i] / 1000
         target_G.compute_third_node()
         target_G.build_elementary_cell()
@@ -341,40 +371,55 @@ def non_rigid_registration(source_G, target_G, ws, wi, wc, marker, K, max_dis):
         # C = np.vstack((EsC, EiC, EcC))
         M = sparse.vstack([ElM, EiM, EcM])
         C = np.vstack((ElC, EiC, EcC))
-        X = sparse.linalg.lsqr(M, C, iter_lim=10000, atol=1e-8, btol=1e-8, conlim=1e7, show=False)
-        target_G.nodes = X[0].reshape((target_G.new_nodes.shape[0], 2))[0:target_G.nodes.shape[0],:]
+        # X = sparse.linalg.lsqr(M, C, iter_lim=10000, atol=1e-8, btol=1e-8, conlim=1e7, show=False)
+        # target_G.nodes = X[0].reshape((target_G.new_nodes.shape[0], 2))[0:target_G.nodes.shape[0],:]
     return source_G, target_G, R, t
 
 def find_closest_nodes(G, search_G, K, max_dis):
     tree = KDTree(search_G.nodes)
     correspondence = -np.ones((G.nodes.shape[0], K), dtype=np.int32)
     for i in range(0, correspondence.shape[0]):
-        # edge = [G.index2id[index] for index in G.edges[i]]
         _, corresind = tree.query(G.nodes[i, :], k=K, distance_upper_bound=max_dis)
         corresind[corresind < 0] = -1
         corresind[corresind >= tree.data.shape[0]] = -1
-        # intersection angle: x0*x1+y0*y1
-        # inter_angles = np.sum(np.tile(G.perpendicular[i], [corresind.shape[0], 1])*search_G.perpendicular[corresind], axis=1)
         correspondence[i, :] = corresind
-        # corr_edges = [search_G.edges[index] for index in corresind[corresind>=0]]
-        # for t in range(0, len(corr_edges)):
-        #     corr_edges[t] = [search_G.index2id[index] for index in corr_edges[t]]
-        # print(edge, corr_edges)
     return correspondence
 
-def print_correspondence(target_G, source_G, correspondence):
-    for i in range(0, len(correspondence)):
-        target_node = target_G.index2id[i]
-        source_nodes = [source_G.index2id[index] for index in correspondence[i][correspondence[i] >= 0]]
-        print(target_node, source_nodes)
+def maximum_matching(matrix):
+    graph = {}
+    for i in range(matrix.shape[0]):
+        graph[str(i) + 's'] = np.nonzero(matrix[i])[0]
+    match = HopcroftKarp(graph).maximum_matching()
+
+    res = [] # [source. trarget]
+    for i in range(matrix.shape[0]):
+        key = str(i) + 's'
+        if key in match:
+            j = match[key]
+            res.append([i, j])
+    return np.array(res)
 
 def build_correspondence(source_G, target_G, K, max_dis):
+    n = source_G.nodes.shape[0]
+    m = target_G.nodes.shape[0]
+    distance_matrix = np.zeros((n, m))
+    for i in range(n):
+        distance_matrix[i] = np.sum((target_G.nodes - source_G.nodes[i])**2, axis=1)
+
+    source_corr = (distance_matrix == np.min(distance_matrix, axis=1)[:, np.newaxis])
+    target_corr = (distance_matrix.T == np.min(distance_matrix, axis=0)[:, np.newaxis]).T
+
+    corr = source_corr * target_corr
+
+    res = maximum_matching(corr)
+    print(res)
+
+    return res
+
+def build_correspondence_(source_G, target_G, K, max_dis):
     source_G.compute_third_node()
     target_G.compute_third_node()
-    # source_G.compute_edges_center()
-    # target_G.compute_edges_center()
     correspondence_1 = find_closest_nodes(target_G, source_G, K, max_dis)
-    # print_correspondence(target_G, source_G, correspondence_1)
     s2t_correspondence = find_closest_nodes(source_G, target_G, K, max_dis)
     correspondence_2 = -np.ones((correspondence_1.shape[0], correspondence_1.shape[0]), dtype=np.int32)
     index = np.zeros((correspondence_1.shape[0], 1), dtype=np.int32)
@@ -384,11 +429,7 @@ def build_correspondence(source_G, target_G, K, max_dis):
         correspondence_2[row, col] = i
         index[row] += 1
     correspondence_2 = np.array([np.array(row) for row in correspondence_2])
-    # print('##################')
-    # print_correspondence(target_G, source_G, correspondence_2)
     tmp_correspondence = np.hstack((correspondence_1, correspondence_2))
-    # print('##################')
-    # print_correspondence(target_G, source_G, tmp_correspondence)
     correspondence = []
     for i in range(0, tmp_correspondence.shape[0]):
         # ###########
@@ -403,29 +444,4 @@ def build_correspondence(source_G, target_G, K, max_dis):
         tmp = np.unique(tmp_correspondence[i,:])
         tmp = tmp[tmp >= 0]
         correspondence.append(tmp)
-    print('##################')
-    print_correspondence(target_G, source_G, correspondence)
     return correspondence
-
-# def build_correspondence_v2(source_G, target_G):
-#     if source_G.nodes.shape[0] > target_G.nodes.shape[0]:
-#         G1 = source_G
-#         G0 = target_G
-#     else:
-#         G0 = source_G
-#         G1 = target_G
-#     # 优化目标：尝试两两匹配节点，然后看边和边的重叠度，最大化重叠度，最小化位移
-#     ### 第一步，找到最大化重叠程度 前α分之一的 方案 ###
-#     n = G0.nodes.shape[0]
-#     m = G1.nodes.shape[0]
-#     # m * (m-1) * (m-2) * ... * n
-#     def x(n, m):
-#         for i in range(0, n):
-#             for j in range(i + 1, m):
-#                 x(n)
-#                 [i, j]
-#     count = 1
-#     for i in range(n, m + 1):
-#         count *= i
-    
-        

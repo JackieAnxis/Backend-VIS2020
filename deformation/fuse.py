@@ -60,7 +60,6 @@ def target_length_weight(G, subgraphs, need_scaled, weights):
     offset = 0
     count = [0,0,0,0,0]
     for i in range(0, n):
-        print(i)
         node_0_id = G.index2id[i]
         for j in range(i + 1, n):
             node_1_id = G.index2id[j]

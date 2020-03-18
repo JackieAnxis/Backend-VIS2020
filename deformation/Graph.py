@@ -44,6 +44,7 @@ class Graph():
         
         self.nodes = nodes
         self.edges = edges
+        self.weights = np.ones((edges.shape[0], 1))
         self.id2index = id2index
         self.index2id = index2id
         self.rawgraph = graph
@@ -54,7 +55,7 @@ class Graph():
     def copy(self):
         new_G = Graph(self.rawgraph)
         return new_G
-    
+
     def to_networkx(self):
         # graph = nx.Graph()
         # for edge in self.new_edges:
@@ -176,8 +177,8 @@ class Graph():
         for i in range(0, self.edges.shape[0]):
             node_0 = self.edges[i][0]
             node_1 = self.edges[i][1]
-            self.adj_matrix[node_0, node_1] = 1
-            self.adj_matrix[node_1, node_0] = 1
+            self.adj_matrix[node_0, node_1] = self.weights[i]
+            self.adj_matrix[node_1, node_0] = self.weights[i]
         return self.adj_matrix
     
     def rw_laplacian_matrix(self, adj_matrix):
