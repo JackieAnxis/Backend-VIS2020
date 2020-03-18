@@ -138,7 +138,7 @@ def apply_deformation_wholegraph():
     settings = json.loads(request.data)
     whole_graph_data = json_graph.node_link_graph(settings['wholeGraphData'])
     deformed_target_graphs = settings['deformedTargetGraph']
-    deformed_target_graphs_values = list(deformed_target_graphs.values())
+    deformed_target_graphs_values = list(deformed_target_graphs)
     for i in range(0, len(deformed_target_graphs_values)):
       deformed_target_graphs_values[i] = json_graph.node_link_graph(deformed_target_graphs_values[i])
     new_G = json_graph.node_link_data(fuse_main(whole_graph_data, deformed_target_graphs_values))
