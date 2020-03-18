@@ -8,7 +8,7 @@ import networkx as nx
 from scipy.optimize import least_squares
 from deformation.fuse import fuse_main
 from deformation.utils import load_json_graph, save_json_graph
-from deformation.correspondence import non_rigid_registration, build_correspondence, similarity_fitting
+from deformation.correspondence import non_rigid_registration, build_correspondence, aligning
 from deformation.Graph import Graph
 
 def affine_minimize(source_G, target_G, deformed_source_G, correspondences):
@@ -177,7 +177,7 @@ def deformation_transfer(source_G, target_G, deformed_source_G, correspondences)
     deformed_target_G.nodes = np.reshape(x, (int(x.shape[0] / 2), 2))[0:deformed_target_G.nodes.shape[0], :]
     return deformed_target_G
 
-def generate(markers, source_graph, deformed_source_graph, target_graph, correspondence, save_to_running = True):
+def generate(markers, source_graph, deformed_source_graph, target_graph, correspondence):
     # load source graph, deformed source graph and target graph
     prefix = './data/test_running/'
     
@@ -194,7 +194,6 @@ def generate(markers, source_graph, deformed_source_graph, target_graph, corresp
     else:
         # build node to node correspondence by a few markers
         marker = np.array(markers)  # [source, target]
-        # marker = np.array([[0, 0], [2, 2], [4, 4]])  # [source, target]
         K = 2
         max_dis = 0.3
         fine = False
@@ -218,44 +217,11 @@ def generate(markers, source_graph, deformed_source_graph, target_graph, corresp
         # correspondence[:, 0] = np.array([source_G.index2id[id] for id in marker[:, 0]])
         # correspondence[:, 1] = np.array([target_G.index2id[id] for id in marker[:, 1]])
 
+        R, t = aligning(target_G, reg_target_G,
+                                  np.array([[index, index] for index in range(target_G.nodes.shape[0])]))
+        reg_target_G.nodes = reg_target_G.nodes.dot(R.T) + t
+
         return reg_target_G.to_networkx()
-
-        # iterations_count = 0
-        # max_iterations_count = 10
-        # while not fine:
-        #     correspondence = build_correspondence(reg_source_G, reg_target_G, K, max_dis)
-        #     iterations_count += 1
-        #     if iterations_count > max_iterations_count:
-        #         print('Too musch iterations on building correspondence')
-        #     for cor in correspondence:
-        #         if cor.shape[0] < 1:  # some target node has no correspondence
-        #             if K > 5:
-        #                 max_dis += 0.1
-        #                 fine = False
-        #                 break
-        #             K += 1
-        #             fine = False
-        #             break
-        #         else:
-        #             fine = True
-
-
-        # deformation transfer
-        deformed_target_G = deformation_transfer(source_G, target_G, deformed_source_G, correspondence)
-        R, t = similarity_fitting(target_G, deformed_target_G, np.array([[index, index] for index in deformed_target_G.index2id]))
-        deformed_source_G.nodes = deformed_source_G.nodes.dot(R.T) + t
-        # simply calcualte the mean position
-        # deformed_target_G = target_G.copy()
-        # for i in range(0, len(correspondence)):
-        #     deformed_target_G.nodes[i, :] = np.mean(deformed_source_G.nodes[correspondence[i], :], axis=0)
-
-    if save_to_running:
-        save_json_graph(source_G.to_networkx(), prefix + 'source.json')
-        save_json_graph(target_G.to_networkx(), prefix + 'target.json')
-        save_json_graph(deformed_source_G.to_networkx(), prefix + '_source.json')
-        save_json_graph(deformed_target_G.to_networkx(), prefix + '_target.json')
-
-    return deformed_target_G.to_networkx()
 
 def main():
     # load source graph, deformed source graph and target graph

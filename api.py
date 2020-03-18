@@ -122,7 +122,7 @@ def apply_deformation():
     source_graph = json_graph.node_link_graph(settings['sourceGraph'])
     deformed_source_graph = json_graph.node_link_graph(settings['_sourceGraph'])
     target_graph = json_graph.node_link_graph(settings['targetGraph'])
-    deformed_target_graph_network = generate(markers, source_graph, deformed_source_graph, target_graph, correspondence, save_to_running=False)
+    deformed_target_graph_network = generate(markers, source_graph, deformed_source_graph, target_graph, correspondence)
     deformed_target_graph = json_graph.node_link_data(deformed_target_graph_network)
     return deformed_target_graph
 
