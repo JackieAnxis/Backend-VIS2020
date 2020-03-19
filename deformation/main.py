@@ -223,7 +223,7 @@ def generate(markers, source_graph, deformed_source_graph, target_graph, corresp
             print('[', marker[0], ',', marker[1], '],')
         print('################')
 
-        # return reg_target_G.to_networkx()
+        return reg_target_G.to_networkx()
 
         markers = correspondence
         marker_increasing = True

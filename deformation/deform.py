@@ -59,56 +59,57 @@ def deform_v1(G, target_pos):
     adj = G.compute_adjacent_matrix()
     V = G.nodes
     L = compute_laplacian_matrix(adj, V)
+    n = V.shape[0]
+
+    M = np.zeros((2 * L.shape[0], 2 * L.shape[0]))
+    indeces = np.arange(L.shape[0], dtype=np.int32)
+    A = np.zeros([n * 2, 4])
+    for j in range(n):
+        A[j * 2] = [V[j, 0], -V[j, 1], 1, 0]
+        A[j * 2 + 1] = [V[j, 1], V[j, 0], 0, 1]
+
+    # Moore-Penrose Inversion
+    A_pinv = np.linalg.pinv(A)
+
+    # T = np.diag()
+    Delta = (L.dot(V))
+    A = np.zeros([n * 2, 4])
+    for k in indeces:
+        A[k * 2] = np.array([Delta[k, 0], -Delta[k, 1], 0, 0])
+        A[k * 2 + 1] = np.array([Delta[k, 1], Delta[k, 0], 0, 0])
+    M -= A.dot(A_pinv)
+
+    C = np.zeros((2 * L.shape[0], 1))
+    coe = np.zeros((len(target_pos) * 2, 2 * L.shape[0]))
+    pos = np.zeros((len(target_pos) * 2, 1))
+    w = 1000
+    j = 0
+    for index in target_pos:
+        coe[j, index * 2] = 1 * w
+        coe[j + 1, index * 2 + 1] = 1 * w
+        pos[j] = target_pos[index][0] * w
+        pos[j + 1] = target_pos[index][1] * w
+        j += 2
+
+    C = np.vstack((C, pos))
 
     res = np.inf
-    for i in range(0, 100):
-        n = V.shape[0]
-        A = np.zeros([n * 2, 4])
-        for j in range(n):
-            A[j * 2] = [V[j, 0], -V[j, 1], 1, 0]
-            A[j * 2 + 1] = [V[j, 1], V[j, 0], 0, 1]
-
-        # Moore-Penrose Inversion
-        A_pinv = np.linalg.pinv(A)
-
+    for i in range(0, 1):
         _L = compute_laplacian_matrix(adj, V)
-        M = np.zeros((2 * _L.shape[0], 2 * _L.shape[0]))
-        index = np.arange(_L.shape[0], dtype=np.int32)
-        for k in index:
-            M[k * 2, index * 2] = _L[k]
-            M[k * 2 + 1, index * 2 + 1] = _L[k]
+        _M = M.copy()
 
-        # T = np.diag()
-        Delta = (L.dot(V))
-        A = np.zeros([n * 2, 4])
-        for k in index:
-            A[k * 2] = np.array([Delta[k, 0], -Delta[k, 1], 0, 0])
-            A[k * 2 + 1] = np.array([Delta[k, 1], Delta[k, 0], 0, 0])
-            # M[k] -= np.dot([Delta[k, 0], -Delta[k, 1], 0, 0], A_pinv)
-            # M[k * 2 + 1] -= np.dot([Delta[k, 1], Delta[k, 0], 0, 0], A_pinv)
-        M -= A.dot(A_pinv)
+        for k in indeces:
+            _M[k * 2, indeces * 2] += _L[k]
+            _M[k * 2 + 1, indeces * 2 + 1] += _L[k]
 
-        # C = Delta.flatten('F').reshape(V.shape[0] * 2, 1)
-        C = np.zeros((2 * _L.shape[0], 1))
-        coe = np.zeros((len(target_pos) * 2, 2 * _L.shape[0]))
-        pos = np.zeros((len(target_pos) * 2, 1))
-        w = 1000
-        j = 0
-        for index in target_pos:
-            coe[j, index*2] = 1 * w
-            coe[j+1, index*2+1] = 1 * w
-            pos[j] = target_pos[index][0] * w
-            pos[j+1] = target_pos[index][1] * w
-            j += 2
-        M = np.vstack((M, coe))
-        C = np.vstack((C, pos))
-        X = sparse.linalg.lsqr(M, C, iter_lim=5000, atol=1e-8, btol=1e-8, conlim=1e7, show=False)[0]
-        _res = np.sum(np.abs(M.dot(X)[:, np.newaxis] - C))
+        _M = np.vstack((_M, coe))
+        X = sparse.linalg.lsqr(_M, C, iter_lim=5000, atol=1e-8, btol=1e-8, conlim=1e7, show=False)[0]
+        _res = np.sum(np.abs(_M.dot(X)[:, np.newaxis] - C))
+        print("residual of iteration", i, _res)
         if _res >= res:
             break
         res = _res
         V = X.reshape((int(X.shape[0] / 2), 2))
-        L = _L
     return V
 
     # def resSimXform(x, A, B):
