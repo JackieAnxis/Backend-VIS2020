@@ -271,7 +271,6 @@ def fuse_v4(G, subgraphs, need_scaled, weights):
     surr_nodes = list(surr_nodes.keys())
 
     surr_nodes = surr_nodes + fused_nodes
-    print([G.index2id[i] for i in surr_nodes])
     surr_graph = G.rawgraph.subgraph([G.index2id[i] for i in surr_nodes])
     # save_json_graph(surr_graph, './data/bn-mouse-kasthuri/surr_graph.json')
     surr_G = Graph(surr_graph)

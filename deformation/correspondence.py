@@ -3,9 +3,8 @@ import numpy as np
 from scipy import sparse
 from scipy.optimize import least_squares
 from scipy.spatial import KDTree
-from deformation.fuse import cal_radius
 from hopcroftkarp import HopcroftKarp
-
+from deformation.deform import aligning, deform_v1, compute_laplacian_matrix
 
 def similarity_fitting(source_G, target_G, marker):
     source_marker_nodes = source_G.nodes[marker[:, 0], :].T # 2 * n
@@ -73,43 +72,85 @@ def similarity_fitting(source_G, target_G, marker):
 
     return R, t
 
+def El_linear_system_v1(source_G, target_G, marker, wl):
+    n = target_G.nodes.shape[0]
+    w = 10
+    adj = target_G.compute_adjacent_matrix()
+    L = compute_laplacian_matrix(adj, target_G.nodes)
 
-def aligning(source_G, target_G, markers):
-    # R = [[ s, h, x]
-    #      [-h, s, y]
-    #      [ 0, 0, 1]]
-    # X = [s, h, tx, ty]
-    # [x  y 0 1]
-    # [y -x 1 0] dot [s h x y].T
-    #     ...
-    k = 4 # [s, h, tx, ty]
-    M = np.zeros((markers.shape[0] * 2, k))
-    C = np.zeros((markers.shape[0] * 2, 1))
-
-    source_marker_nodes = source_G.nodes[markers[:, 0], :]
-    target_marker_nodes = target_G.nodes[markers[:, 1], :]
-    for i in range(0, markers.shape[0]):
-        x = target_marker_nodes[i][0]
-        y = target_marker_nodes[i][1]
-        M[i * 2] = np.array([x, y, 1, 0])
-        M[i * 2 + 1] = np.array([y, -x, 0, 1])
-        C[i * 2:i * 2 + 2] = source_marker_nodes[i][:, np.newaxis]
-
-    X = sparse.linalg.lsqr(M, C, iter_lim=30000, atol=1e-8, btol=1e-8, conlim=1e7, show=False)
-
-    s = X[0][0]
-    h = X[0][1]
-    t = X[0][2:]
-    R = np.array([[s, h], [-h, s]])
-    return R, t
-
-def El_linear_system(source_G, target_G, marker, wl):
-    # target_G.compute_adjacent_matrix()
+    # for i in range(n):
+    #     for j in range(i+1, n):
+    #         distance = (np.sum((target_G.nodes[i] - target_G.nodes[j])**2))
+    #         weight = 1
+    #         if adj[i, j]:
+    #             weight = w
+    #         adj[i, j] = adj[j, i] = weight / distance
     # L = target_G.rw_laplacian_matrix(target_G.adj_matrix)
 
-    radius = cal_radius(target_G)
-    adj = target_G.compute_euc_adj_matrix(radius)
-    L = target_G.rw_laplacian_matrix(adj)
+
+    # dis_mat = compute_distance_matrix(target_G, target_G)
+    # radius = np.mean(np.sqrt(dis_mat))
+    # adj = target_G.compute_euc_adj_matrix(radius)
+    # L = target_G.rw_laplacian_matrix(adj)
+
+    V = target_G.nodes
+    Delta = L.dot(V)
+
+    C = np.zeros(((n + marker.shape[0]) * 2, 1))
+    index = np.arange(L.shape[0], dtype=np.int32)
+    LS = np.zeros([2 * n, 2 * n])
+    for i in index:
+        LS[i * 2, index * 2] = (-1) * L[i]
+        LS[i * 2 + 1, index * 2 + 1] = (-1) * L[i]
+
+    
+    A = np.zeros([n * 2, 4])
+    for j in range(n):
+        A[j] = [V[j, 0], -V[j, 1], 1, 0]
+        A[j + n] = [V[j, 1], V[j, 0], 0, 1]
+
+    # Moore-Penrose Inversion
+    A_pinv = np.linalg.pinv(A)
+    # A_pinv = np.dot(np.linalg.inv(np.dot(np.transpose(A), A)), np.transpose(A))
+    s = A_pinv[0]
+    h = A_pinv[1]
+    # t = A_pinv[2:4]
+
+    # for i in range(n):
+    for i in range(L.shape[0]):
+        T_delta = np.vstack([
+            Delta[i, 0] * s - Delta[i, 1] * h,
+            Delta[i, 0] * h + Delta[i, 1] * s
+        ])
+
+        LS[i * 2, np.hstack([index * 2, index * 2 + 1])] += T_delta[0]
+        LS[i * 2 + 1, np.hstack([index * 2, index * 2 + 1])] += T_delta[1]
+        # LS[i+2*n, np.hstack([ring, ring+n, ring+2*n])] += T_delta[2]
+
+    constraint_coef = []
+
+    # Handle constraints
+    for i in range(0, marker.shape[0]):
+        source_marker_id = marker[i, 0]
+        target_marker_id = marker[i, 1]
+        constraint_coef.append(np.arange(2 * n) == target_marker_id * 2)
+        constraint_coef.append(np.arange(2 * n) == target_marker_id * 2 + 1)
+        C[n * 2 + i * 2:n * 2 + i * 2 + 2, :] = source_G.nodes[source_marker_id][:, np.newaxis]
+
+    constraint_coef = np.matrix(constraint_coef)
+
+    A = np.vstack([wl * LS, wl * constraint_coef * 1000])
+    M = sparse.coo_matrix(A)
+    C = wl * C * 1000
+    return M, C
+
+def El_linear_system(source_G, target_G, marker, wl):
+    adj = target_G.compute_adjacent_matrix()
+    L = target_G.rw_laplacian_matrix(target_G.adj_matrix)
+    # dis_mat = compute_distance_matrix(target_G, target_G)
+    # radius = np.mean(np.sqrt(dis_mat))
+    # adj = target_G.compute_euc_adj_matrix(radius)
+    # L = target_G.rw_laplacian_matrix(adj)
 
     V = target_G.nodes
     Delta = L.dot(V)
@@ -172,7 +213,6 @@ def El_linear_system(source_G, target_G, marker, wl):
     M = sparse.coo_matrix(A)
     C = wl * C * 1000
     return M, C
-
 
 def Es_linear_system(source_G, target_G, target_edge_adj, marker, ws):
     n = target_G.new_edges.shape[0]
@@ -344,23 +384,28 @@ def non_rigid_registration(source_G, target_G, ws, wi, wc, marker, K, max_dis):
     # R, t = similarity_fitting(source_G, target_G, marker)
     R, t = aligning(source_G, target_G, marker)
     target_G.nodes = target_G.nodes.dot(R.T) + t
-    target_G.compute_third_node()
-    source_G.compute_third_node()
+    # target_G.compute_third_node()
+    # source_G.compute_third_node()
     # target_edge_adj = target_G.find_adj_edges()
-    target_G.build_elementary_cell()
+    # target_G.build_elementary_cell()
 
     # X = length_minimize(source_G, target_G, marker)
     # target_G.nodes = X.reshape((target_G.nodes.shape[0], 2))
 
+    # # smooth
+    # ElM, ElC = El_linear_system(source_G, target_G, marker, ws)
+    # # EsM, EsC = Es_linear_system(source_G, target_G, target_edge_adj, marker, ws)
+    # # identity
+    # EiM, EiC = Ei_linear_system(source_G, target_G, wi)
+    # M = sparse.vstack([ElM, EiM * 0])
+    # C = np.vstack((ElC, EiC * 0))
+    # X = sparse.linalg.lsqr(M, C, iter_lim=30000, atol=1e-8, btol=1e-8, conlim=1e7, show=False)
+    # target_G.nodes = X[0].reshape((target_G.new_nodes.shape[0], 2))[0:target_G.nodes.shape[0],:]
+
     # smooth
-    ElM, ElC = El_linear_system(source_G, target_G, marker, ws)
-    # EsM, EsC = Es_linear_system(source_G, target_G, target_edge_adj, marker, ws)
-    # identity
-    EiM, EiC = Ei_linear_system(source_G, target_G, wi)
-    M = sparse.vstack([ElM, EiM * 0])
-    C = np.vstack((ElC, EiC * 0))
-    X = sparse.linalg.lsqr(M, C, iter_lim=30000, atol=1e-8, btol=1e-8, conlim=1e7, show=False)
-    target_G.nodes = X[0].reshape((target_G.new_nodes.shape[0], 2))[0:target_G.nodes.shape[0],:]
+    ElM, ElC = El_linear_system_v1(source_G, target_G, marker, ws)
+    X = sparse.linalg.lsqr(ElM, ElC, iter_lim=30000, atol=1e-8, btol=1e-8, conlim=1e7, show=False)
+    target_G.nodes = X[0].reshape((int(X[0].shape[0] / 2), 2))
 
     # for i in range(0, len(wc)):
     #     print('#####')
@@ -404,24 +449,52 @@ def maximum_matching(matrix):
         if key in match:
             j = match[key]
             res.append([i, j])
-    return np.array(res)
+    return res
 
-def build_correspondence(source_G, target_G, K, max_dis):
-    n = source_G.nodes.shape[0]
-    m = target_G.nodes.shape[0]
+def compute_distance_matrix(G0, G1):
+    n = G0.nodes.shape[0]
+    m = G1.nodes.shape[0]
     distance_matrix = np.zeros((n, m))
     for i in range(n):
-        distance_matrix[i] = np.sum((target_G.nodes - source_G.nodes[i])**2, axis=1)
+        distance_matrix[i] = np.sum((G1.nodes - G0.nodes[i]) ** 2, axis=1)
+    return distance_matrix
 
-    source_corr = (distance_matrix == np.min(distance_matrix, axis=1)[:, np.newaxis])
-    target_corr = (distance_matrix.T == np.min(distance_matrix, axis=0)[:, np.newaxis]).T
+def build_correspondence(source_G, target_G, correspondence):
+    distance_matrix = compute_distance_matrix(source_G, target_G)
+
+    for corr in correspondence: # the nodes has constructed the correspondence
+        distance_matrix[corr[0]] = np.ones((1, distance_matrix.shape[1])) * -1
+        distance_matrix[:, corr[1]] = np.ones((distance_matrix.shape[0])) * -1
+
+    min_for_each_row = np.zeros((distance_matrix.shape[0]))
+    for i in range(distance_matrix.shape[0]):
+        positive_cell = distance_matrix[i][distance_matrix[i]>0]
+        if positive_cell.shape[0]:
+            min_for_each_row[i] = np.min(positive_cell)
+        else:
+            min_for_each_row[i] = -2
+
+    min_for_each_col = np.zeros((distance_matrix.shape[1]))
+    for j in range(distance_matrix.shape[1]):
+        positive_cell = distance_matrix[:, j][distance_matrix[:, j]>0]
+        if positive_cell.shape[0]:
+            min_for_each_col[j] = np.min(positive_cell)
+        else:
+            min_for_each_col[j] = -2
+
+    source_corr = (distance_matrix == min_for_each_row[:, np.newaxis])
+    target_corr = (distance_matrix == min_for_each_col)
 
     corr = source_corr * target_corr
 
     res = maximum_matching(corr)
-    print(res)
 
-    return res
+    #####
+    correspondence = correspondence.tolist()
+    res = correspondence + res
+    #####
+
+    return np.array(res)
 
 def build_correspondence_(source_G, target_G, K, max_dis):
     source_G.compute_third_node()
@@ -452,3 +525,26 @@ def build_correspondence_(source_G, target_G, K, max_dis):
         tmp = tmp[tmp >= 0]
         correspondence.append(tmp)
     return correspondence
+
+def non_rigid_registration_v1(source_G, target_G, ws, wi, wc, markers, K, max_dis):
+    # change target into source
+    source_G = source_G.copy()
+    target_G = target_G.copy()
+    R = np.array([[1,0],[0,1]])
+    t = np.array([0,0])
+    R, t = aligning(source_G, target_G, markers)
+    target_G.nodes = target_G.nodes.dot(R.T) + t
+
+    # markers = np.array([[source_G.id2index[str(mk[0])], target_G.id2index[str(mk[1])]] for mk in marker])
+    target_pos = {}
+    for mk in markers:
+        s_id = mk[0]
+        t_id = mk[1]
+        target_pos[t_id] = source_G.nodes[s_id]
+
+    X = deform_v1(target_G, target_pos)
+    target_G.nodes = X
+    _R, _t = aligning(source_G, target_G, markers)
+    target_G.nodes = target_G.nodes.dot(_R.T) + _t
+    return source_G, target_G, R, t
+

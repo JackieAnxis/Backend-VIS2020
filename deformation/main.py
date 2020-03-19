@@ -8,8 +8,9 @@ import networkx as nx
 from scipy.optimize import least_squares
 from deformation.fuse import fuse_main
 from deformation.utils import load_json_graph, save_json_graph
-from deformation.correspondence import non_rigid_registration, build_correspondence, aligning
+from deformation.correspondence import non_rigid_registration, build_correspondence
 from deformation.Graph import Graph
+from deformation.deform import aligning
 
 def affine_minimize(source_G, target_G, deformed_source_G, correspondences):
     target_G.build_elementary_cell()
@@ -204,19 +205,44 @@ def generate(markers, source_graph, deformed_source_graph, target_graph, corresp
         markers[:, 0] = np.array([source_G.id2index[str(id)] for id in markers[:, 0]])
         markers[:, 1] = np.array([target_G.id2index[str(id)] for id in markers[:, 1]])
         marker_increasing = True
+        correspondence = np.zeros((0,2), dtype=np.int32)
         while marker_increasing:
             reg_source_G, reg_target_G, R, t = non_rigid_registration(source_G, target_G, ws, wi, wc, markers, K,
                                                                       max_dis)
-            correspondence = build_correspondence(reg_source_G, reg_target_G, K, max_dis)
+            correspondence = build_correspondence(reg_source_G, reg_target_G, correspondence)
+            if correspondence.shape[0] <= markers.shape[0]:
+                marker_increasing = False
+            markers = correspondence
+            # return reg_target_G.to_networkx()
+
+        markers = markers.copy()
+        markers[:, 0] = np.array([source_G.index2id[index] for index in markers[:, 0]])
+        markers[:, 1] = np.array([target_G.index2id[index] for index in markers[:, 1]])
+        markers.tolist()
+        for marker in markers:
+            print('[', marker[0], ',', marker[1], '],')
+        print('################')
+
+        # return reg_target_G.to_networkx()
+
+        markers = correspondence
+        marker_increasing = True
+        while marker_increasing:
+            reg_source_G, reg_target_G, R, t = non_rigid_registration(deformed_source_G, target_G, ws, wi, wc,
+                                                                      correspondence, K, max_dis)
+            correspondence = build_correspondence(reg_source_G, reg_target_G, correspondence)
             if correspondence.shape[0] <= markers.shape[0]:
                 marker_increasing = False
             markers = correspondence
 
-        # return reg_target_G.to_networkx()
+        markers = markers.copy()
+        markers[:, 0] = np.array([source_G.index2id[index] for index in markers[:, 0]])
+        markers[:, 1] = np.array([target_G.index2id[index] for index in markers[:, 1]])
+        markers.tolist()
+        for marker in markers:
+            print('[', marker[0], ',', marker[1], '],')
+        print('################')
 
-        # markers[:, 0] = np.array([source_G.index2id[index] for index in markers[:, 0]])
-        # markers[:, 1] = np.array([target_G.index2id[index] for index in markers[:, 1]])
-        reg_source_G, reg_target_G, R, t = non_rigid_registration(deformed_source_G, target_G, ws, wi, wc, correspondence, K, max_dis)
 
         # correspondence = [[] for i in range(target_G.nodes.shape[0])]
         # for marker in markers:
@@ -224,9 +250,9 @@ def generate(markers, source_graph, deformed_source_graph, target_graph, corresp
         # correspondence = [np.array(corr) for corr in correspondence]
         # reg_target_G = deformation_transfer(source_G, target_G, deformed_source_G, correspondence)
 
-        R, t = aligning(target_G, reg_target_G,
-                                  np.array([[index, index] for index in range(target_G.nodes.shape[0])]))
-        reg_target_G.nodes = reg_target_G.nodes.dot(R.T) + t
+        # R, t = aligning(target_G, reg_target_G,
+        #                           np.array([[index, index] for index in range(target_G.nodes.shape[0])]))
+        # reg_target_G.nodes = reg_target_G.nodes.dot(R.T) + t
 
         return reg_target_G.to_networkx()
 
@@ -279,16 +305,17 @@ def main_for_power():
     # [548, 47], [536, 45], [532, 76], [528, 82], [531, 155], [584, 227]
 
     markers = [
-        [[462, 246], [589, 220], [466, 182], [477, 194]],
-        [[462, 488], [589, 482], [466, 583], [477, 487]],
-        [[462, 137], [589, 273], [466, 11], [477, 12]],
-        [[462, 317], [589, 59], [466, 28], [477, 228]],
-        [[462, 71], [589, 7], [466, 215], [477, 272]],
-        # [[462, 220], [589, 257], [466, 245], [477, 181]],
-        # [[462, 583], [589, 488], [466, 580], [477, 482]],
-        # [[462, 290], [589, 271], [466, 135], [477, 10]],
+        # [[462, 246], [589, 220], [466, 182], [477, 194]],
+        # [[462, 488], [589, 482], [466, 583], [477, 487]],
+        # [[462, 137], [589, 273], [466, 11], [477, 12]],
         # [[462, 317], [589, 59], [466, 28], [477, 228]],
+        # [[462, 71], [589, 7], [466, 215], [477, 272]],
+        [[462, 220], [589, 257], [466, 245], [477, 181]],
+        [[462, 583], [589, 488], [466, 580], [477, 482]],
+        [[462, 290], [589, 271], [466, 135], [477, 10]],
+        [[462, 317], [589, 60], [466, 28], [477, 228]],
         # [[462, 8], [589, 271], [466, 71], [477, 215]],
+        [[462, 99], [589, 7], [466, 215], [477, 272]],
     ]
     #####
 
@@ -320,11 +347,12 @@ def main_for_power():
         deformed_target = generate(markers[k], source, deformed_source, target, correspondence)
         deformed_targets.append(deformed_target)
         save_json_graph(deformed_target, prefix + '_target' + str(k) + '.json')
+        # save_json_graph(nx.union(deformed_target, deformed_source), prefix + '_target' + str(k) + '.json')
     fused_graph = fuse_main(G.rawgraph, deformed_targets)
     save_json_graph(fused_graph, prefix + 'new.json')
 
 
-def main():
+def main_for_mouse():
     # load source graph, deformed source graph and target graph
     prefix = './data/bn-mouse-kasthuri/'
     G = load_json_graph(prefix + 'graph-with-pos.json')
@@ -333,6 +361,8 @@ def main():
     source_nodes = [720, 941, 943, 939, 942, 944, 940]
     target_nodes = [
         [676, 853, 850, 851, 854, 848, 852, 849, 855],
+        [703, 920, 921, 919],
+        [660, 782, 780, 784, 789, 786, 781, 787, 783]
     ]
     source_top_node = source_nodes[0]
     target_top_node = [nodes[0] for nodes in target_nodes]
@@ -353,11 +383,11 @@ def main():
     deformed_source = source.copy()
     begin_node = cycle_source_nodes[0]
     begin_index = np.nonzero(cycle_source_nodes == begin_node)[0]
-    interval = 2.0 * np.pi / (cycle_source_nodes.shape[0])
+    interval = 1.0 * np.pi / (cycle_source_nodes.shape[0])
     for i in range(0, cycle_source_nodes.shape[0]):
         index = int((begin_index + i) % cycle_source_nodes.shape[0])
-        x = center[0] + radius * np.sin(interval * i)
-        y = center[1] - radius * np.cos(interval * i)
+        x = center[0] + radius * np.sin(interval )# * i)
+        y = center[1] - radius * np.cos(interval )# * i)
         id = int(G.index2id[cycle_source_nodes[index]])
         deformed_source.nodes[id]['x'] = x
         deformed_source.nodes[id]['y'] = y
@@ -377,4 +407,5 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    main_for_power()
+    # main_for_mouse()
