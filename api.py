@@ -12,6 +12,7 @@ from deformation.fuse import fuse_main
 from models.S3 import search_similar_structures
 from deformation.regal_alignment import get_regal_correspondence
 from deformation.knn_sim_alignment import get_knn_sim_correspondence
+from subgraph.main import get_subgraph
 
 app = Flask(__name__)
 CORS(app)
@@ -40,6 +41,13 @@ def whole_graph():
             # "cluster": cluster_label
         }
 
+@app.route('/sub-graph', methods=['POST'])
+def sub_graph():
+  settings = json.loads(request.data)
+  markers = settings['markers']
+  r = 10
+  graph = get_subgraph(markers, r)
+  return graph
 
 @app.route('/test')
 def test():
@@ -102,8 +110,8 @@ def search():
 @app.route('/apply-deformation', methods=['POST'])
 def apply_deformation():
     settings = json.loads(request.data)
-    markers = settings['autoMarkers']
-    # markers = settings['manualMarkers']
+    # markers = settings['autoMarkers']
+    markers = settings['manualMarkers']
     # Method1: using knn components mapping
     # correspondence = get_knn_sim_correspondence(settings['nodeMaps'], settings['sourceGraph'], settings['targetGraph'])
     # print('correspondence:')
@@ -131,7 +139,7 @@ def apply_deformation_wholegraph():
     settings = json.loads(request.data)
     whole_graph_data = json_graph.node_link_graph(settings['wholeGraphData'])
     deformed_target_graphs = settings['deformedTargetGraph']
-    deformed_target_graphs_values = list(deformed_target_graphs.values())
+    deformed_target_graphs_values = list(deformed_target_graphs)
     for i in range(0, len(deformed_target_graphs_values)):
       deformed_target_graphs_values[i] = json_graph.node_link_graph(deformed_target_graphs_values[i])
     new_G = json_graph.node_link_data(fuse_main(whole_graph_data, deformed_target_graphs_values))
