@@ -3,6 +3,7 @@ import numpy as np
 from scipy import sparse
 from scipy.optimize import least_squares
 from scipy.spatial import KDTree
+from deformation.fuse import cal_radius
 from hopcroftkarp import HopcroftKarp
 
 
@@ -103,8 +104,13 @@ def aligning(source_G, target_G, markers):
     return R, t
 
 def El_linear_system(source_G, target_G, marker, wl):
-    target_G.compute_adjacent_matrix()
-    L = target_G.rw_laplacian_matrix(target_G.adj_matrix)
+    # target_G.compute_adjacent_matrix()
+    # L = target_G.rw_laplacian_matrix(target_G.adj_matrix)
+
+    radius = cal_radius(target_G)
+    adj = target_G.compute_euc_adj_matrix(radius)
+    L = target_G.rw_laplacian_matrix(adj)
+
     V = target_G.nodes
     Delta = L.dot(V)
     # n = L.shape[0]
@@ -123,7 +129,8 @@ def El_linear_system(source_G, target_G, marker, wl):
 
     # for i in range(n):
     for i in range(L.shape[0]):
-        nb_idx = target_G.get_local_neighbor(i, target_G.adj_matrix) # node i and its neibors
+        # nb_idx = target_G.get_local_neighbor(i, target_G.adj_matrix) # node i and its neibors
+        nb_idx = target_G.get_local_neighbor(i, adj)  # node i and its neibors
         ring = np.array([i] + nb_idx)  # node i and its neibors in subgraph
         V_ring = V[ring]
         n_ring = V_ring.shape[0]
@@ -355,24 +362,24 @@ def non_rigid_registration(source_G, target_G, ws, wi, wc, marker, K, max_dis):
     X = sparse.linalg.lsqr(M, C, iter_lim=30000, atol=1e-8, btol=1e-8, conlim=1e7, show=False)
     target_G.nodes = X[0].reshape((target_G.new_nodes.shape[0], 2))[0:target_G.nodes.shape[0],:]
 
-    for i in range(0, len(wc)):
-        print('#####')
-        ws += i * wc[i] / 1000
-        target_G.compute_third_node()
-        target_G.build_elementary_cell()
-        # smooth
-        ElM, ElC = El_linear_system(source_G, target_G, marker, ws)
-        # EsM, EsC = Es_linear_system(source_G, target_G, target_edge_adj, marker, ws)
-        # identity
-        EiM, EiC = Ei_linear_system(source_G, target_G, wi)
-        # closest
-        EcM, EcC = Ec_linear_system(source_G, target_G, marker, wc[i], K, max_dis)
-        # M = sparse.vstack([EsM, EiM, EcM])
-        # C = np.vstack((EsC, EiC, EcC))
-        M = sparse.vstack([ElM, EiM, EcM])
-        C = np.vstack((ElC, EiC, EcC))
-        # X = sparse.linalg.lsqr(M, C, iter_lim=10000, atol=1e-8, btol=1e-8, conlim=1e7, show=False)
-        # target_G.nodes = X[0].reshape((target_G.new_nodes.shape[0], 2))[0:target_G.nodes.shape[0],:]
+    # for i in range(0, len(wc)):
+    #     print('#####')
+    #     ws += i * wc[i] / 1000
+    #     target_G.compute_third_node()
+    #     target_G.build_elementary_cell()
+    #     # smooth
+    #     ElM, ElC = El_linear_system(source_G, target_G, marker, ws)
+    #     # EsM, EsC = Es_linear_system(source_G, target_G, target_edge_adj, marker, ws)
+    #     # identity
+    #     EiM, EiC = Ei_linear_system(source_G, target_G, wi)
+    #     # closest
+    #     EcM, EcC = Ec_linear_system(source_G, target_G, marker, wc[i], K, max_dis)
+    #     # M = sparse.vstack([EsM, EiM, EcM])
+    #     # C = np.vstack((EsC, EiC, EcC))
+    #     M = sparse.vstack([ElM, EiM, EcM])
+    #     C = np.vstack((ElC, EiC, EcC))
+    #     # X = sparse.linalg.lsqr(M, C, iter_lim=10000, atol=1e-8, btol=1e-8, conlim=1e7, show=False)
+    #     # target_G.nodes = X[0].reshape((target_G.new_nodes.shape[0], 2))[0:target_G.nodes.shape[0],:]
     return source_G, target_G, R, t
 
 def find_closest_nodes(G, search_G, K, max_dis):
