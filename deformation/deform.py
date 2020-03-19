@@ -65,8 +65,8 @@ def deform_v1(G, target_pos):
         n = V.shape[0]
         A = np.zeros([n * 2, 4])
         for j in range(n):
-            A[j * 2] = [V[j, 0], V[j, 1], 1, 0]
-            A[j * 2 + 1] = [V[j, 1], -V[j, 0], 0, 1]
+            A[j * 2] = [V[j, 0], -V[j, 1], 1, 0]
+            A[j * 2 + 1] = [V[j, 1], V[j, 0], 0, 1]
 
         # Moore-Penrose Inversion
         A_pinv = np.linalg.pinv(A)
@@ -80,9 +80,13 @@ def deform_v1(G, target_pos):
 
         # T = np.diag()
         Delta = (L.dot(V))
+        A = np.zeros([n * 2, 4])
         for k in index:
-            M[k] -= np.dot([Delta[k, 0], Delta[k, 1], 0, 0], A_pinv)
-            M[k * 2 + 1] -= np.dot([Delta[k, 1], -Delta[k, 0], 0, 0], A_pinv)
+            A[k * 2] = np.array([Delta[k, 0], -Delta[k, 1], 0, 0])
+            A[k * 2 + 1] = np.array([Delta[k, 1], Delta[k, 0], 0, 0])
+            # M[k] -= np.dot([Delta[k, 0], -Delta[k, 1], 0, 0], A_pinv)
+            # M[k * 2 + 1] -= np.dot([Delta[k, 1], Delta[k, 0], 0, 0], A_pinv)
+        M -= A.dot(A_pinv)
 
         # C = Delta.flatten('F').reshape(V.shape[0] * 2, 1)
         C = np.zeros((2 * _L.shape[0], 1))

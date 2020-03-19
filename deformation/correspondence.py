@@ -78,21 +78,6 @@ def El_linear_system_v1(source_G, target_G, marker, wl):
     adj = target_G.compute_adjacent_matrix()
     L = compute_laplacian_matrix(adj, target_G.nodes)
 
-    # for i in range(n):
-    #     for j in range(i+1, n):
-    #         distance = (np.sum((target_G.nodes[i] - target_G.nodes[j])**2))
-    #         weight = 1
-    #         if adj[i, j]:
-    #             weight = w
-    #         adj[i, j] = adj[j, i] = weight / distance
-    # L = target_G.rw_laplacian_matrix(target_G.adj_matrix)
-
-
-    # dis_mat = compute_distance_matrix(target_G, target_G)
-    # radius = np.mean(np.sqrt(dis_mat))
-    # adj = target_G.compute_euc_adj_matrix(radius)
-    # L = target_G.rw_laplacian_matrix(adj)
-
     V = target_G.nodes
     Delta = L.dot(V)
 
@@ -105,9 +90,12 @@ def El_linear_system_v1(source_G, target_G, marker, wl):
 
     
     A = np.zeros([n * 2, 4])
+    # for j in range(n):
+    #     A[j] = [V[j, 0], -V[j, 1], 1, 0]
+    #     A[j + n] = [V[j, 1], V[j, 0], 0, 1]
     for j in range(n):
-        A[j] = [V[j, 0], -V[j, 1], 1, 0]
-        A[j + n] = [V[j, 1], V[j, 0], 0, 1]
+        A[j * 2] = [V[j, 0], -V[j, 1], 1, 0]
+        A[j * 2 + 1] = [V[j, 1], V[j, 0], 0, 1]
 
     # Moore-Penrose Inversion
     A_pinv = np.linalg.pinv(A)
@@ -116,16 +104,23 @@ def El_linear_system_v1(source_G, target_G, marker, wl):
     h = A_pinv[1]
     # t = A_pinv[2:4]
 
-    # for i in range(n):
-    for i in range(L.shape[0]):
-        T_delta = np.vstack([
-            Delta[i, 0] * s - Delta[i, 1] * h,
-            Delta[i, 0] * h + Delta[i, 1] * s
-        ])
+    # # for i in range(n):
+    # for i in range(L.shape[0]):
+    #     T_delta = np.vstack([
+    #         Delta[i, 0] * s - Delta[i, 1] * h,
+    #         Delta[i, 0] * h + Delta[i, 1] * s
+    #     ])
+    #
+    #     # LS[i * 2, np.hstack([index * 2, index * 2 + 1])] += T_delta[0]
+    #     # LS[i * 2 + 1, np.hstack([index * 2, index * 2 + 1])] += T_delta[1]
+    #     LS[i * 2] += T_delta[0]
+    #     LS[i * 2 + 1] += T_delta[1]
 
-        LS[i * 2, np.hstack([index * 2, index * 2 + 1])] += T_delta[0]
-        LS[i * 2 + 1, np.hstack([index * 2, index * 2 + 1])] += T_delta[1]
-        # LS[i+2*n, np.hstack([ring, ring+n, ring+2*n])] += T_delta[2]
+    # for i in range(n):
+    A = np.zeros([n * 2, 4])
+    for k in range(L.shape[0]):
+        LS[k * 2] += np.dot([Delta[k, 0], -Delta[k, 1], 0, 0], A_pinv)
+        LS[k * 2 + 1] += np.dot([Delta[k, 1], Delta[k, 0], 0, 0], A_pinv)
 
     constraint_coef = []
 
@@ -372,7 +367,7 @@ def length_minimize(source_G, target_G, marker):
     return b.x
 
 # def non_rigid_registration(source_G, target_G, ws, wi, wc, marker):
-def non_rigid_registration(source_G, target_G, ws, wi, wc, marker, K, max_dis):
+def non_rigid_registration_v0(source_G, target_G, ws, wi, wc, marker, K, max_dis):
     # change target into source
     source_G = source_G.copy()
     # source_G.normalize()
@@ -526,7 +521,7 @@ def build_correspondence_(source_G, target_G, K, max_dis):
         correspondence.append(tmp)
     return correspondence
 
-def non_rigid_registration_v1(source_G, target_G, ws, wi, wc, markers, K, max_dis):
+def non_rigid_registration(source_G, target_G, ws, wi, wc, markers, K, max_dis):
     # change target into source
     source_G = source_G.copy()
     target_G = target_G.copy()
