@@ -62,24 +62,20 @@ def deform_v2(G, target_pos):
                 offset += 2
         return D
 
-    def get_new_node(n0, n1):
-        vectors = n0 - n1
-        # Rotate 90 degrees counterclockwise
-        perpendicular_vectors = np.stack([-vectors[1], vectors[0]])
-        perpendicular_vectors = (perpendicular_vectors / np.sqrt(np.sum(perpendicular_vectors ** 2, axis=0))).T
-
-        return n0 + perpendicular_vectors
-
     n = G.nodes.shape[0]
     V = G.nodes
+    adj = G.compute_adjacent_matrix()
+    L = compute_laplacian_matrix(adj, V)
     D = get_D(n)
     d = D.dot(V.flatten())  # direction, vi - vj, [..., (x_i-x_j), (y_i-y_j), ...].T, shape=(n*(n-1)*2, 1)
+    weights = np.zeros((n * (n - 1), 1))
     DD = np.zeros((n * (n - 1), 2 * n * (n - 1)))
     # [..., (x_i-x_j), (y_i-y_j),         0,         0, ...]
     # [...,         0,         0, (x_i-x_j), (y_i-y_j), ...]
     offset = 0
     for i in range(n):
         for j in range(i + 1, n):
+            weights[offset * 2] = weights[offset * 2 + 1] = -L[i, j]
             DD[offset * 2, offset * 4] = d[offset * 2]
             DD[offset * 2, offset * 4 + 1] = d[offset * 2 + 1]
             DD[offset * 2 + 1, offset * 4 + 2] = d[offset * 2]
@@ -105,7 +101,7 @@ def deform_v2(G, target_pos):
 
     RES = M.dot(V.flatten()) - d
     Q = U.dot(V.flatten())[:, np.newaxis]
-    M = M-D
+    M = weights * (M-D)
     C = np.zeros((n * (n - 1), 1))
 
     coe = np.zeros((len(target_pos) * 2, 2 * n))

@@ -537,7 +537,7 @@ def non_rigid_registration(source_G, target_G, ws, wi, wc, markers, K, max_dis):
         t_id = mk[1]
         target_pos[t_id] = source_G.nodes[s_id]
 
-    X = deform_v1(target_G, target_pos)
+    X = deform_v2(target_G, target_pos)
     target_G.nodes = X
     _R, _t = aligning(source_G, target_G, markers)
     target_G.nodes = target_G.nodes.dot(_R.T) + _t
