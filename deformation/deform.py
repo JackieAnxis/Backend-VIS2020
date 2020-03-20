@@ -50,6 +50,152 @@ def compute_laplacian_matrix(adj, nodes):
     L = np.diag(np.sum(adj, axis=1)) - adj
     return L
 
+def deform_v2(G, target_pos):
+    def get_D(n):
+        D = np.zeros(((n - 1) * n, 2 * n))
+        offset = 0
+        for i in range(n):
+            for j in range(i + 1, n):
+                # vi-vj
+                D[offset, [i * 2, j * 2]] = [1, -1]
+                D[offset + 1, [i * 2 + 1, j * 2 + 1]] = [1, -1]
+                offset += 2
+        return D
+
+    def get_new_node(n0, n1):
+        vectors = n0 - n1
+        # Rotate 90 degrees counterclockwise
+        perpendicular_vectors = np.stack([-vectors[1], vectors[0]])
+        perpendicular_vectors = (perpendicular_vectors / np.sqrt(np.sum(perpendicular_vectors ** 2, axis=0))).T
+
+        return n0 + perpendicular_vectors
+
+    n = G.nodes.shape[0]
+    V = G.nodes
+    D = get_D(n)
+    d = D.dot(V.flatten())  # direction, vi - vj, [..., (x_i-x_j), (y_i-y_j), ...].T, shape=(n*(n-1)*2, 1)
+    DD = np.zeros((n * (n - 1), 2 * n * (n - 1)))
+    # [..., (x_i-x_j), (y_i-y_j),         0,         0, ...]
+    # [...,         0,         0, (x_i-x_j), (y_i-y_j), ...]
+    offset = 0
+    for i in range(n):
+        for j in range(i + 1, n):
+            DD[offset * 2, offset * 4] = d[offset * 2]
+            DD[offset * 2, offset * 4 + 1] = d[offset * 2 + 1]
+            DD[offset * 2 + 1, offset * 4 + 2] = d[offset * 2]
+            DD[offset * 2 + 1, offset * 4 + 3] = d[offset * 2 + 1]
+            offset += 1
+
+    U = np.zeros((2 * n * (n - 1), n * 2))
+    offset = 0
+    for i in range(n):
+        for j in range(i + 1, n):
+            n0 = G.nodes[i]
+            n1 = G.nodes[j]
+            A = np.vstack((n0, [n0[1], -n0[0]], n1, [n1[1], -n1[0]]))
+            A_pinv = np.linalg.pinv(A)
+
+            U[offset * 4, [i * 2, i * 2 + 1, j * 2, j * 2 + 1]] = A_pinv[0]
+            U[offset * 4 + 1, [i * 2, i * 2 + 1, j * 2, j * 2 + 1]] = A_pinv[1]
+            U[offset * 4 + 2, [i * 2, i * 2 + 1, j * 2, j * 2 + 1]] = -1.0 * A_pinv[1]
+            U[offset * 4 + 3, [i * 2, i * 2 + 1, j * 2, j * 2 + 1]] = A_pinv[0]
+            offset += 1
+
+    M = DD.dot(U)
+
+    RES = M.dot(V.flatten()) - d
+    Q = U.dot(V.flatten())[:, np.newaxis]
+    M = M-D
+    C = np.zeros((n * (n - 1), 1))
+
+    coe = np.zeros((len(target_pos) * 2, 2 * n))
+    pos = np.zeros((len(target_pos) * 2, 1))
+    w = 1000
+    j = 0
+    for index in target_pos:
+        coe[j, index * 2] = 1 * w
+        coe[j + 1, index * 2 + 1] = 1 * w
+        pos[j] = target_pos[index][0] * w
+        pos[j + 1] = target_pos[index][1] * w
+        j += 2
+    C = np.vstack((C, pos))
+    M = np.vstack((M, coe))
+    X = sparse.linalg.lsqr(M, C, iter_lim=5000, atol=1e-8, btol=1e-8, conlim=1e7, show=False)[0]
+    V = X.reshape((int(X.shape[0] / 2), 2))
+    return V
+
+
+def deform_v2_bak(G, target_pos):
+    def get_D(n):
+        D = np.zeros(((n-1) * n, 2 * n))
+        offset = 0
+        for i in range(n):
+            for j in range(i+1, n):
+                # vi-vj
+                D[offset, [i * 2, j * 2]] = [1, -1]
+                D[offset + 1, [i * 2 + 1, j * 2 + 1]] = [1, -1]
+                offset += 2
+        return D
+
+    def get_new_node(n0, n1):
+        vectors = n0 - n1
+        # Rotate 90 degrees counterclockwise
+        perpendicular_vectors = np.stack([-vectors[1], vectors[0]])
+        perpendicular_vectors = (perpendicular_vectors / np.sqrt(np.sum(perpendicular_vectors ** 2, axis=0))).T
+
+        return n0 + perpendicular_vectors
+
+    n = G.nodes.shape[0]
+    V = G.nodes
+    D = get_D(n)
+    d = D.dot(V.flatten()) # direction, vi - vj, [..., (x_i-x_j), (y_i-y_j), ...].T, shape=(n*(n-1)*2, 1)
+    A = np.zeros((n * (n-1), 2 * n * (n-1)))
+    # [..., (x_i-x_j), (y_i-y_j),         0,         0, ...]
+    # [...,         0,         0, (x_i-x_j), (y_i-y_j), ...]
+    offset = 0
+    for i in range(n):
+        for j in range(i+1, n):
+            A[offset * 2, offset * 4] = d[offset * 2]
+            A[offset * 2, offset * 4 + 1] = d[offset * 2+1]
+            A[offset * 2 + 1, offset * 4 + 2] = d[offset * 2]
+            A[offset * 2 + 1, offset * 4 + 3] = d[offset * 2+1]
+            offset += 1
+
+    nodes = np.vstack((V, np.zeros((int(n * (n - 1) / 2), 2))))
+    # node_pairs = np.zeros((n * (n - 1), 6))
+    U = np.zeros((2 * n * (n - 1), n * (n + 1)))
+    offset = 0
+    for i in range(n):
+        for j in range(i+1, n):
+            new_node = get_new_node(G.nodes[i], G.nodes[j])
+            # node_pairs[offset][0:2] = G.nodes[i]
+            # node_pairs[offset][2:4] = G.nodes[j]
+            # node_pairs[offset][4:6] = new_node
+            k = n + offset
+            nodes[k] = new_node
+            V = np.vstack((G.nodes[j] - G.nodes[i], new_node - G.nodes[i])).T
+            # [xj-xi, xk-xi]
+            # [yj-yi, yk-yi]
+            V_inv = np.linalg.inv(V)
+            u = np.hstack((-np.sum(V_inv, axis=0).T[:, np.newaxis], V_inv.T))
+            U[offset * 4, [i * 2, j * 2, k * 2]] = u[0]
+            U[offset * 4 + 1, [i * 2, j * 2, k * 2]] = u[1]
+            U[offset * 4 + 2, [i * 2 + 1, j * 2 + 1, k * 2 + 1]] = u[0]
+            U[offset * 4 + 3, [i * 2 + 1, j * 2 + 1, k * 2 + 1]] = u[1]
+            offset += 1
+
+    M = A.dot(U)
+    C = np.hstack((D, np.zeros((D.shape[0], n * (n - 1)))))
+
+    # RES = M.dot(nodes.flatten()) - d
+    # Q = U.dot(nodes.flatten())[:, np.newaxis]
+    M = M - C
+
+
+    X = sparse.linalg.lsqr(M, C, iter_lim=5000, atol=1e-8, btol=1e-8, conlim=1e7, show=False)[0]
+    V = X.reshape((int(X.shape[0] / 2), 2))
+    return V
+
 def deform_v1(G, target_pos):
     '''
     :param G:
@@ -112,28 +258,7 @@ def deform_v1(G, target_pos):
         V = X.reshape((int(X.shape[0] / 2), 2))
     return V
 
-    # def resSimXform(x, A, B):
-    #     x_count = int(x.shape[0] / 2)
-    #     V = x.reshape((x_count, 2))
-    #     for index in target_pos:
-    #         V[index] = target_pos[index]
-    #     A = A[0:A.shape[1], :]
-    #     B = B.reshape((x_count, 2))
-    #     L = compute_laplacian_matrix(A, V)
-    #     result = (L.dot(V) - B).flatten()
-    #     return result
-    #
-    # b = least_squares(fun=resSimXform, x0=x0, jac='2-point', method='lm',
-    #                   args=(A, B),
-    #                   ftol=1e-12, xtol=1e-12, gtol=1e-12, max_nfev=100000)
-
-    print(np.sum(resSimXform(x0, A, B)))
-    print(np.sum(resSimXform(b.x, A, B)))
-    X = b.x.reshape((int(b.x.shape[0] / 2), 2))
-
-    return X
-
-def deform(pos, target_sub_pos):
+def deform_bak(pos, target_sub_pos):
     '''
     :param pos: a dict
     :param target_sub_pos: a dict

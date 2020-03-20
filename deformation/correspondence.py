@@ -4,7 +4,7 @@ from scipy import sparse
 from scipy.optimize import least_squares
 from scipy.spatial import KDTree
 from hopcroftkarp import HopcroftKarp
-from deformation.deform import aligning, deform_v1, compute_laplacian_matrix
+from deformation.deform import aligning, deform_v1, deform_v2, compute_laplacian_matrix
 
 def similarity_fitting(source_G, target_G, marker):
     source_marker_nodes = source_G.nodes[marker[:, 0], :].T # 2 * n
