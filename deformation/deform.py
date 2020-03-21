@@ -50,6 +50,121 @@ def compute_laplacian_matrix(adj, nodes):
     L = np.diag(np.sum(adj, axis=1)) - adj
     return L
 
+def deform_v4(G, target_pos):
+    '''
+    try to minimize the transformation difference between node pairs
+    '''
+    V = G.nodes
+    n = V.shape[0]
+    adj = G.compute_adjacent_matrix()
+    L = compute_laplacian_matrix(adj, V)
+    
+    A_pinv = []
+    for i in range(n):
+        [x, y] = G.nodes[i]
+        Ai = np.vstack(([x, y, 1, 0], [-y, x, 0, 1]))
+        Ai_pinv = np.linalg.pinv(Ai) # (4, 2)
+        A_pinv.append(Ai_pinv)
+    
+    M = np.zeros((n * (n - 1) * 2, n * 2))
+    C = np.zeros((n * (n - 1) * 2, 1))
+    offset = 0
+    for i in range(n):
+        for j in range(i + 1, n):
+            M[offset * 4, [i * 2, i * 2 + 1, j * 2, j * 2 + 1]] = np.hstack((A_pinv[i][0], -A_pinv[j][0])) * L[i, j]
+            M[offset * 4 + 1, [i * 2, i * 2 + 1, j * 2, j * 2 + 1]] = np.hstack((A_pinv[i][1], -A_pinv[j][1])) * L[i, j]
+            M[offset * 4 + 2, [i * 2, i * 2 + 1, j * 2, j * 2 + 1]] = np.hstack((A_pinv[i][2], -A_pinv[j][2])) * L[i, j]
+            M[offset * 4 + 3, [i * 2, i * 2 + 1, j * 2, j * 2 + 1]] = np.hstack((A_pinv[i][3], -A_pinv[j][3])) * L[i, j]
+            offset += 1
+    
+    coe = np.zeros((len(target_pos) * 2, 2 * n))
+    pos = np.zeros((len(target_pos) * 2, 1))
+    w = 1000
+    j = 0
+    for index in target_pos:
+        coe[j, index * 2] = 1 * w
+        coe[j + 1, index * 2 + 1] = 1 * w
+        pos[j] = target_pos[index][0] * w
+        pos[j + 1] = target_pos[index][1] * w
+        j += 2
+    C = np.vstack((C, pos))
+    M = np.vstack((M, coe))
+    X = sparse.linalg.lsqr(M, C, iter_lim=5000, atol=1e-8, btol=1e-8, conlim=1e7, show=False)[0]
+    V = X.reshape((int(X.shape[0] / 2), 2))
+    return V
+
+def deform_v3(G, target_pos):
+    def get_D(n):
+        D = np.zeros(((n - 1) * n, 2 * n))
+        offset = 0
+        for i in range(n):
+            for j in range(i + 1, n):
+                # vi-vj
+                D[offset, [i * 2, j * 2]] = [1, -1]
+                D[offset + 1, [i * 2 + 1, j * 2 + 1]] = [1, -1]
+                offset += 2
+        return D
+
+    n = G.nodes.shape[0]
+    V = G.nodes
+    adj = G.compute_adjacent_matrix()
+    L = compute_laplacian_matrix(adj, V)
+    D = get_D(n)
+    d = D.dot(V.flatten())  # direction, vi - vj, [..., (x_i-x_j), (y_i-y_j), ...].T, shape=(n*(n-1)*2, 1)
+    weights = np.zeros((n * (n - 1), 1))
+    DD = np.zeros((n * (n - 1), 2 * n * (n - 1)))
+    # [..., (x_i-x_j), (y_i-y_j),         0,         0, ...]
+    # [...,         0,         0, (x_i-x_j), (y_i-y_j), ...]
+    offset = 0
+    for i in range(n):
+        for j in range(i + 1, n):
+            weights[offset * 2] = weights[offset * 2 + 1] = -L[i, j]
+            DD[offset * 2, offset * 4] = d[offset * 2]
+            DD[offset * 2, offset * 4 + 1] = d[offset * 2 + 1]
+            DD[offset * 2 + 1, offset * 4 + 2] = d[offset * 2]
+            DD[offset * 2 + 1, offset * 4 + 3] = d[offset * 2 + 1]
+            offset += 1
+
+    A = np.zeros((n * 2, 2))
+    for i in range(n):
+        A[i * 2] = G.nodes[i]
+        A[i * 2 + 1][0] = G.nodes[i][1]
+        A[i * 2 + 1][1] = -G.nodes[i][0]
+    A_pinv = np.linalg.pinv(A)
+
+    U = np.zeros((2 * n * (n - 1), n * 2))
+    offset = 0
+    for i in range(n):
+        for j in range(i + 1, n):
+            U[offset * 4] = A_pinv[0]
+            U[offset * 4 + 1] = A_pinv[1]
+            U[offset * 4 + 2] = -1.0 * A_pinv[1]
+            U[offset * 4 + 3] = A_pinv[0]
+            offset += 1
+
+    M = DD.dot(U)
+
+    RES = M.dot(V.flatten()) - d
+    Q = U.dot(V.flatten())[:, np.newaxis]
+    M = weights * (M-D)
+    C = np.zeros((n * (n - 1), 1))
+
+    coe = np.zeros((len(target_pos) * 2, 2 * n))
+    pos = np.zeros((len(target_pos) * 2, 1))
+    w = 1000
+    j = 0
+    for index in target_pos:
+        coe[j, index * 2] = 1 * w
+        coe[j + 1, index * 2 + 1] = 1 * w
+        pos[j] = target_pos[index][0] * w
+        pos[j + 1] = target_pos[index][1] * w
+        j += 2
+    C = np.vstack((C, pos))
+    M = np.vstack((M, coe))
+    X = sparse.linalg.lsqr(M, C, iter_lim=5000, atol=1e-8, btol=1e-8, conlim=1e7, show=False)[0]
+    V = X.reshape((int(X.shape[0] / 2), 2))
+    return V
+
 def deform_v2(G, target_pos):
     def get_D(n):
         D = np.zeros(((n - 1) * n, 2 * n))
@@ -119,7 +234,6 @@ def deform_v2(G, target_pos):
     X = sparse.linalg.lsqr(M, C, iter_lim=5000, atol=1e-8, btol=1e-8, conlim=1e7, show=False)[0]
     V = X.reshape((int(X.shape[0] / 2), 2))
     return V
-
 
 def deform_v2_bak(G, target_pos):
     def get_D(n):

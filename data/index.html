@@ -27,28 +27,46 @@
     <button
         style="width: 40px; height: 15px; border-radius: 3px; font-size: 10px; position: fixed; top: 20px; right: 20px;"
         id="toggleText">TEXT</button>
-    <svg id="container" width="1800" height="1200">
+    <svg id="container" width="1800" height="2000">
     </svg>
     <script src="./d3.v4.min.js"></script>
     <script>
-        // let path = './bn-mouse-kasthuri/'
+        let path = './bn-mouse-kasthuri/'
         // let path = './road-euroroad/'
-        let path = './power-662-bus/'
+        // let path = './power-662-bus/'
         // let path = './road-chesapeake/'
         addGraph('graph-with-pos', 50, 50, 800, 800)
         addGraph('new', 1000, 50, 800, 800)
-        addGraph('source', 50, 820, 100, 100)
-        addGraph('_source', 50, 960, 100, 100)
-        addGraph('target0', 200, 820, 100, 100)
-        addGraph('_target0', 200, 960, 100, 100)
-        addGraph('target1', 350, 820, 100, 100)
-        addGraph('_target1', 350, 960, 100, 100)
-        addGraph('target2', 500, 820, 100, 100)
-        addGraph('_target2', 500, 960, 100, 100)
-        addGraph('target3', 650, 820, 100, 100)
-        addGraph('_target3', 650, 960, 100, 100)
-        addGraph('target4', 800, 820, 100, 100)
-        addGraph('_target4', 800, 960, 100, 100)
+        addGraph('source', 50, 900 + 150, 100, 100)
+        addGraph('_source1', 50, 900 + 150 * 2, 100, 100)
+        addGraph('_source2', 50, 900 + 150 * 3, 100, 100)
+        addGraph('_source3', 50, 900 + 150 * 4, 100, 100)
+        addGraph('_source4', 50, 900 + 150 * 5, 100, 100)
+        addGraph('target0', 200, 900, 100, 100)
+        addGraph('_target00', 200, 900 + 150, 100, 100)
+        addGraph('_target10', 200, 900 + 150 * 2, 100, 100)
+        addGraph('_target20', 200, 900 + 150 * 3, 100, 100)
+        addGraph('_target30', 200, 900 + 150 * 4, 100, 100)
+        addGraph('_target40', 200, 900 + 150 * 5, 100, 100)
+        addGraph('_target0', 200, 900 + 150 * 6, 100, 100)
+        addGraph('target1', 350, 900, 100, 100)
+        addGraph('_target01', 350, 900 + 150, 100, 100)
+        addGraph('_target11', 350, 900 + 150 * 2, 100, 100)
+        addGraph('_target21', 350, 900 + 150 * 3, 100, 100)
+        addGraph('_target31', 350, 900 + 150 * 4, 100, 100)
+        addGraph('_target41', 350, 900 + 150 * 5, 100, 100)
+        addGraph('_target1', 350, 900 + 150 * 6, 100, 100)
+        addGraph('target2', 500, 900, 100, 100)
+        addGraph('_target02', 500, 900 + 150, 100, 100)
+        addGraph('_target12', 500, 900 + 150 * 2, 100, 100)
+        addGraph('_target22', 500, 900 + 150 * 3, 100, 100)
+        addGraph('_target32', 500, 900 + 150 * 4, 100, 100)
+        addGraph('_target42', 500, 900 + 150 * 5, 100, 100)
+        addGraph('_target2', 500, 900 + 150 * 6, 100, 100)
+        // addGraph('target3', 650, 960, 100, 100)
+        // addGraph('_target3', 650, 960 + 150, 100, 100)
+        // addGraph('target4', 800, 960, 100, 100)
+        // addGraph('_target4', 800, 960 + 150, 100, 100)
 
         let flag = true
         d3.select('#toggleText').on('click', function () {
