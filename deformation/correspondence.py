@@ -4,7 +4,7 @@ from scipy import sparse
 from scipy.optimize import least_squares
 from scipy.spatial import KDTree
 from hopcroftkarp import HopcroftKarp
-from deformation.deform import aligning, deform_v1, deform_v2, deform_v3, deform_v4, compute_laplacian_matrix
+from deformation.deform import aligning, deform_v1, deform_v2, deform_v3, deform_v4, deform_v5, deform_v6, deform_v7, compute_laplacian_matrix
 
 def similarity_fitting(source_G, target_G, marker):
     source_marker_nodes = source_G.nodes[marker[:, 0], :].T # 2 * n
@@ -454,6 +454,35 @@ def compute_distance_matrix(G0, G1):
         distance_matrix[i] = np.sum((G1.nodes - G0.nodes[i]) ** 2, axis=1)
     return distance_matrix
 
+
+def build_correspondence_v2(source_G, target_G, correspondence):
+    distance_matrix = compute_distance_matrix(source_G, target_G)
+    r = np.max(distance_matrix) / 100
+
+    for corr in correspondence: # the nodes has constructed the correspondence
+        distance_matrix[corr[0]] = np.ones((1, distance_matrix.shape[1])) * np.inf
+        distance_matrix[:, corr[1]] = np.ones((distance_matrix.shape[0])) * np.inf
+
+    source_corr = np.zeros(shape=distance_matrix.shape)
+    for i in range(distance_matrix.shape[0]):
+        source_corr[i] = (distance_matrix[i] < r)
+
+    target_corr = np.zeros(shape=distance_matrix.shape)
+    for j in range(distance_matrix.shape[1]):
+        target_corr[:, j] = (distance_matrix[:, j] < r)
+
+    corr = source_corr * target_corr
+
+    res = maximum_matching(corr)
+
+    #####
+    correspondence = correspondence.tolist()
+    res = correspondence + res
+    #####
+
+    return np.array(res)
+
+
 def build_correspondence(source_G, target_G, correspondence):
     distance_matrix = compute_distance_matrix(source_G, target_G)
 
@@ -491,7 +520,7 @@ def build_correspondence(source_G, target_G, correspondence):
 
     return np.array(res)
 
-def build_correspondence_(source_G, target_G, K, max_dis):
+def build_correspondence_v0(source_G, target_G, K, max_dis):
     source_G.compute_third_node()
     target_G.compute_third_node()
     correspondence_1 = find_closest_nodes(target_G, source_G, K, max_dis)
@@ -537,7 +566,7 @@ def non_rigid_registration(source_G, target_G, ws, wi, wc, markers, K, max_dis):
         t_id = mk[1]
         target_pos[t_id] = source_G.nodes[s_id]
 
-    X = deform_v4(target_G, target_pos)
+    X = deform_v7(target_G, target_pos)
     target_G.nodes = X
     _R, _t = aligning(source_G, target_G, markers)
     target_G.nodes = target_G.nodes.dot(_R.T) + _t

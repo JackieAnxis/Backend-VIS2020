@@ -205,7 +205,7 @@ def generate(markers, source_graph, deformed_source_graph, target_graph, corresp
         markers[:, 0] = np.array([source_G.id2index[str(id)] for id in markers[:, 0]])
         markers[:, 1] = np.array([target_G.id2index[str(id)] for id in markers[:, 1]])
         marker_increasing = True
-        correspondence = np.zeros((0,2), dtype=np.int32)
+        correspondence = markers.copy() # np.zeros((0,2), dtype=np.int32)
         while marker_increasing:
             reg_source_G, reg_target_G, R, t = non_rigid_registration(source_G, target_G, ws, wi, wc, markers, K,
                                                                       max_dis)
@@ -213,7 +213,9 @@ def generate(markers, source_graph, deformed_source_graph, target_graph, corresp
             if correspondence.shape[0] <= markers.shape[0]:
                 marker_increasing = False
             markers = correspondence
-            # return reg_target_G.to_networkx()
+            # markers[:, 0] = np.array([source_G.index2id[index] for index in markers[:, 0]])
+            # markers[:, 1] = np.array([target_G.index2id[index] for index in markers[:, 1]])
+            # return reg_target_G.to_networkx(), markers
 
         markers = markers.copy()
         markers[:, 0] = np.array([source_G.index2id[index] for index in markers[:, 0]])
@@ -319,7 +321,7 @@ def main_for_power():
         # [[462, 99], [589, 7], [466, 215], [477, 272]],
         #### the following is for deform_v2 ####
         [[462, 220], [589, 257], [466, 245], [477, 181]],
-        [[462, 583], [589, 488], [466, 580], [477, 482]],
+        [[462, 583], [589, 488], [466, 580], [477, 487]],
         [[462, 290], [589, 273], [466, 135], [477, 12]],
         [[462, 317], [589, 60], [466, 28], [477, 228]],
         [[462, 272], [589, 215], [466, 7], [477, 71]],
@@ -351,7 +353,7 @@ def main_for_power():
         target = nx.Graph(nx.subgraph(G.rawgraph, [str(id) for id in target_nodes[k]]))
         save_json_graph(target, prefix + 'target' + str(k) + '.json')
         correspondence = []
-        deformed_target = generate(markers[k], source, deformed_source, target, correspondence)
+        deformed_target, correspondence = generate(markers[k], source, deformed_source, target, correspondence)
         deformed_targets.append(deformed_target)
         save_json_graph(deformed_target, prefix + '_target' + str(k) + '.json')
         # save_json_graph(nx.union(deformed_target, deformed_source), prefix + '_target' + str(k) + '.json')
@@ -375,6 +377,9 @@ def main_for_mouse():
 
     markers = [[[source_nodes[i], target_nodes[k][i]] for i in [0, 1, -1]] for k in range(len(target_nodes))]
     #####
+    # markers[0].append([939, 848])
+    # markers[2].append([939, 784])
+    #####
 
     G = Graph(G)
     # deform the source graph #
@@ -387,23 +392,41 @@ def main_for_mouse():
         deformed_source = source.copy()
         begin_node = cycle_source_nodes[0]
         begin_index = np.nonzero(cycle_source_nodes == begin_node)[0]
+        # interval = 2.0 * np.pi / (cycle_source_nodes.shape[0])
         interval = 0.5 * k * np.pi / (cycle_source_nodes.shape[0])
         for i in range(0, cycle_source_nodes.shape[0]):
             index = int((begin_index + i) % cycle_source_nodes.shape[0])
-            x = center[0] + radius * np.sin(interval  * i)
-            y = center[1] - radius * np.cos(interval  * i)
+            x = center[0] + radius * np.sin(interval * i)
+            y = center[1] - radius * np.cos(interval * i)
             id = int(G.index2id[cycle_source_nodes[index]])
+            # deformed_source.nodes[id]['x'] = (x * k / 4 + source.nodes[id]['x'] * (4 - k) / 4)
+            # deformed_source.nodes[id]['y'] = (y * k / 4 + source.nodes[id]['y'] * (4 - k) / 4)
             deformed_source.nodes[id]['x'] = x
             deformed_source.nodes[id]['y'] = y
 
         deformed_sources.append(deformed_source)
         save_json_graph(deformed_source, prefix + '_source' + str(k) + '.json')
 
+    # deformed_sources = [source]
+    # for k in range(1, 5):
+    #     deformed_source = source.copy()
+    #     begin_node = cycle_source_nodes[0]
+    #     begin_index = np.nonzero(cycle_source_nodes == begin_node)[0]
+    #     interval = 0.5 * k * np.pi / (cycle_source_nodes.shape[0])
+    #     for i in range(0, cycle_source_nodes.shape[0]):
+    #         index = int((begin_index + i) % cycle_source_nodes.shape[0])
+    #         x = center[0] + radius * np.sin(interval  * i)
+    #         y = center[1] - radius * np.cos(interval  * i)
+    #         id = int(G.index2id[cycle_source_nodes[index]])
+    #         deformed_source.nodes[id]['x'] = x
+    #         deformed_source.nodes[id]['y'] = y
+    #
+    #     deformed_sources.append(deformed_source)
+    #     save_json_graph(deformed_source, prefix + '_source' + str(k) + '.json')
+
     targets = []
-    weights = []
     for k in range(0, len(target_nodes)):
         target = nx.Graph(nx.subgraph(G.rawgraph, [str(id) for id in target_nodes[k]]))
-
         targets.append(target)
         save_json_graph(target, prefix + 'target' + str(k) + '.json')
 
@@ -423,6 +446,7 @@ def main_for_mouse():
             targets[k] = deformed_target
             # deformed_targets.append(deformed_target)
             save_json_graph(deformed_target, prefix + '_target' + str(i) + str(k) + '.json')
+        print(markers)
 
 
     # fused_graph = fuse_main(G.rawgraph, deformed_targets)
