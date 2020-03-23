@@ -550,7 +550,7 @@ def build_correspondence_v0(source_G, target_G, K, max_dis):
         correspondence.append(tmp)
     return correspondence
 
-def non_rigid_registration(source_G, target_G, ws, wi, wc, markers, K, max_dis):
+def non_rigid_registration(source_G, target_G, ws, wi, wc, markers, K, max_dis, iter=100):
     # change target into source
     source_G = source_G.copy()
     target_G = target_G.copy()
@@ -566,7 +566,7 @@ def non_rigid_registration(source_G, target_G, ws, wi, wc, markers, K, max_dis):
         t_id = mk[1]
         target_pos[t_id] = source_G.nodes[s_id]
 
-    X = deform_v7(target_G, target_pos)
+    X = deform_v7(target_G, target_pos, iter)
     target_G.nodes = X
     _R, _t = aligning(source_G, target_G, markers)
     target_G.nodes = target_G.nodes.dot(_R.T) + _t

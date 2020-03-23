@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Document</title>
-    <style>
+    <!-- <style>
         circle {
             r: 1;
             /* fill: royalblue; */
@@ -20,53 +20,38 @@
             stroke: rgb(211, 203, 183);
             stroke-width: 1;
         }
-    </style>
+    </style> -->
 </head>
 
 <body>
     <button
-        style="width: 40px; height: 15px; border-radius: 3px; font-size: 10px; position: fixed; top: 20px; right: 20px;"
+        style="width: 40px; height: 15px; border-radius: 3px; font-size: 10px; position: fixed; top: 20px; left: 20px;"
         id="toggleText">TEXT</button>
-    <svg id="container" width="1800" height="2000">
+    <svg id="container" width="2400" height="2000">
     </svg>
     <script src="./d3.v4.min.js"></script>
     <script>
-        let path = './bn-mouse-kasthuri/'
+        // let path = './bn-mouse-kasthuri/'
         // let path = './road-euroroad/'
-        // let path = './power-662-bus/'
+        let path = './power-662-bus/'
         // let path = './road-chesapeake/'
         addGraph('graph-with-pos', 50, 50, 800, 800)
-        addGraph('new', 1000, 50, 800, 800)
-        addGraph('source', 50, 900 + 150, 100, 100)
-        addGraph('_source1', 50, 900 + 150 * 2, 100, 100)
-        addGraph('_source2', 50, 900 + 150 * 3, 100, 100)
-        addGraph('_source3', 50, 900 + 150 * 4, 100, 100)
-        addGraph('_source4', 50, 900 + 150 * 5, 100, 100)
-        addGraph('target0', 200, 900, 100, 100)
-        addGraph('_target00', 200, 900 + 150, 100, 100)
-        addGraph('_target10', 200, 900 + 150 * 2, 100, 100)
-        addGraph('_target20', 200, 900 + 150 * 3, 100, 100)
-        addGraph('_target30', 200, 900 + 150 * 4, 100, 100)
-        addGraph('_target40', 200, 900 + 150 * 5, 100, 100)
-        addGraph('_target0', 200, 900 + 150 * 6, 100, 100)
-        addGraph('target1', 350, 900, 100, 100)
-        addGraph('_target01', 350, 900 + 150, 100, 100)
-        addGraph('_target11', 350, 900 + 150 * 2, 100, 100)
-        addGraph('_target21', 350, 900 + 150 * 3, 100, 100)
-        addGraph('_target31', 350, 900 + 150 * 4, 100, 100)
-        addGraph('_target41', 350, 900 + 150 * 5, 100, 100)
-        addGraph('_target1', 350, 900 + 150 * 6, 100, 100)
-        addGraph('target2', 500, 900, 100, 100)
-        addGraph('_target02', 500, 900 + 150, 100, 100)
-        addGraph('_target12', 500, 900 + 150 * 2, 100, 100)
-        addGraph('_target22', 500, 900 + 150 * 3, 100, 100)
-        addGraph('_target32', 500, 900 + 150 * 4, 100, 100)
-        addGraph('_target42', 500, 900 + 150 * 5, 100, 100)
-        addGraph('_target2', 500, 900 + 150 * 6, 100, 100)
-        // addGraph('target3', 650, 960, 100, 100)
-        // addGraph('_target3', 650, 960 + 150, 100, 100)
-        // addGraph('target4', 800, 960, 100, 100)
-        // addGraph('_target4', 800, 960 + 150, 100, 100)
+        addGraph('new', 50, 1000, 800, 800)
+
+        let n = 4 // target count
+        let m = 4 // interpolation count
+        for (let j = 0; j <= m; j++) {
+            addGraph('result/interpolation' + j, 1000, 350 + j * 150, 100, 100)
+        }
+
+        for (let i = 0; i <= n; i++) {
+            addGraph('result/target' + i, 1000 + (i + 1) * 150, 50, 100, 100)
+            addGraph('result/aligned_target' + i, 1000 + (i + 1) * 150, 200, 100, 100)
+            for (let j = 0; j <= m; j++) {
+                addGraph('result/deformed_target' + i + j, 1000 + (i + 1) * 150, 200 + (j + 1) * 150, 100, 100)
+            }
+            addGraph('result/deformed_target' + i, 1000 + (i + 1) * 150, 200 + (m + 2) * 150, 100, 100)
+        }
 
         let flag = false
         d3.select('#toggleText').on('click', function () {
@@ -86,8 +71,8 @@
             let container = d3.select('#container')
             let g = container.append('g')
             g.attr('id', name).attr('transform', `translate(${x},${y})`)
-            g.append('text').text(name).attr('y', '-20')
-            g.append('rect').attr('width', width).attr('height', height).attr('fill', 'transparent')
+            g.append('text').text(name).attr('y', '-20').attr('font-size', '10px')
+            // g.append('rect').attr('width', width).attr('height', height).attr('fill', 'transparent')
             d3.json(`${path}${name}.json`, function (error, graph) {
                 if (error) throw error;
                 let id2node = graph.nodes.reduce((id2node, node) => {
@@ -144,7 +129,7 @@
                         return d.target.y;
                     })
                     .attr("stroke", "rgb(211, 203, 183)")
-                    .attr("stroke-width", 1)
+                    .attr("stroke-width", "1px")
 
                 let node = g.append("g")
                     .attr("class", "nodes")
@@ -152,7 +137,7 @@
                     .data(graph.nodes)
                     .enter()
                     .append("circle")
-                    .attr("r", 3)
+                    .attr("r", "3")
                     .attr('fill', 'royalblue')
                     .attr('title', d => d.id)
                     .attr("cx", function (d) {
@@ -175,6 +160,7 @@
                         return d.y;
                     })
                     .text(d => d.id)
+                    .attr('font-size', '0px')
             });
 
         }

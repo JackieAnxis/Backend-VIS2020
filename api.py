@@ -7,11 +7,10 @@ from flask_cors import CORS
 from models.get_data import get_test_data
 from networkx.readwrite import json_graph
 from embeddings.get_cluster import get_cluster_label
-from deformation.main import generate
+from MT.main import generate
 from deformation.fuse import fuse_main
 from models.S3 import search_similar_structures
 from deformation.regal_alignment import get_regal_correspondence
-from deformation.knn_sim_alignment import get_knn_sim_correspondence
 from subgraph.main import get_subgraph
 
 app = Flask(__name__)
@@ -26,10 +25,11 @@ def hello_world():
 @app.route('/whole-graph')
 def whole_graph():
     # name = 'VIS'
+    name = 'power-662-bus'
     # name = 'bn-mouse-kasthuri'
     # name = 'email-Eu-core'
     # name = 'bio-DM-LC'
-    name = 'road-euroroad'
+    # name = 'road-euroroad'
 
     # data_path = './data/' + name + '/graph.json'
     data_path = './data/' + name + '/graph-with-pos.json'
