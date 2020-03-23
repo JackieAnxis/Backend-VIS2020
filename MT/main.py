@@ -23,7 +23,7 @@ def generate(source_graph, deformed_source_graph, target_graph, markers):
     source_G = Graph(source_graph)
     deformed_source_G = Graph(deformed_source_graph)
     target_G = Graph(target_graph)
-    target_G = modification_transfer(source_G, deformed_source_G, target_G, markers, intermediate_states=[source_G, deformed_source_G])
+    target_G = modification_transfer(source_G, target_G, markers, intermediate_states=[source_G, deformed_source_G])
     return target_G.to_networkx()
 
 def modification_transfer(source_G, target_G, markers, intermediate_states=[], inter_res=False):
