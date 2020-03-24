@@ -9,8 +9,18 @@ from MT.correspondence import build_correspondence
 from MT.Graph import Graph
 from models.utils import load_json_graph, save_json_graph
 
+def interpolate_v2(source_G, deformed_source_G, sequence):
+    results = [source_G]
+    for id in sequence:
+        i = source_G.id2index[str(id)]
+        last = results[len(results) - 1]
+        inter = last.copy()
+        inter.nodes = last.nodes.copy()
+        inter.nodes[i] = deformed_source_G.nodes[i]
+        results.append(inter)
+    return results
 
-def interpolate(source_G, deformed_source_G, n):
+def interpolate_v1(source_G, deformed_source_G, n):
     results = []
     for i in range(n):
         inter = source_G.copy()
@@ -87,7 +97,7 @@ def main_for_power():
         return deformed_source_G
 
     prefix = './data/power-662-bus/'
-    G = load_json_graph(prefix + 'graph-with-pos.json')
+
     source_nodes = [462, 575, 589, 588, 477, 476, 466, 574]
     target_nodes = [
         [222, 220, 221, 257, 195, 194, 181, 182, 183, 245, 246],
@@ -98,27 +108,85 @@ def main_for_power():
     ]
 
     markers = [
-        [[462, 220], [589, 257], [466, 245], [477, 181]],
-        [[462, 583], [589, 488], [466, 580], [477, 482]],
-        [[462, 290], [589, 273], [466, 135], [477, 10]],
-        [[462, 317], [589, 60], [466, 28], [477, 228]],
-        [[462, 272], [589, 215], [466, 7], [477, 71]],
+        [[462, 246], [589, 220], [466, 182], [477, 194]],
+        [[462, 488], [589, 482], [466, 583], [477, 487]],
+        [[462, 137], [589, 273], [466, 11], [477, 12]],
+        [[462, 317], [589, 59], [466, 28], [477, 228]],
+        [[462, 71], [589, 7], [466, 215], [477, 272]],
+        # [[462, 220], [589, 257], [466, 245], [477, 181]],
+        # [[462, 583], [589, 488], [466, 580], [477, 482]],
+        # [[462, 290], [589, 273], [466, 135], [477, 10]],
+        # [[462, 317], [589, 60], [466, 28], [477, 228]],
+        # [[462, 272], [589, 215], [466, 7], [477, 71]],
     ]
-    
+
+    G = load_json_graph(prefix + 'graph-with-pos.json')
+
     source = nx.Graph(G.subgraph(source_nodes))
     source_G = Graph(source)
     deformed_source_G = modify(source_G, source_nodes)
-    intermediate_states_count = 5
-    intermediate_states = interpolate(source_G, deformed_source_G, intermediate_states_count)
-    
+
+    target_Gs = []
     for i in range(len(target_nodes)):
         target = nx.Graph(G.subgraph(target_nodes[i]))
         target_G = Graph(target)
+        target_Gs.append(target_G)
+
+    main(prefix, G, source_G, deformed_source_G, target_Gs, markers)
+
+def main_for_mouse():
+    def modify(source_G, source_nodes):
+        V = source_G.nodes
+        n = V.shape[0]
+        center = V[source_G.id2index[str(source_nodes[0])]]
+        radius = np.mean(np.sqrt(np.sum((V - center) ** 2, axis=1)))
+        interval = 2.0 * np.pi / (n - 1)
+        deformed_source_G = source_G.copy()
+        i = 0
+        for id in source_nodes[1:]:
+            x = center[0] + radius * np.sin(interval * i)
+            y = center[1] - radius * np.cos(interval * i)
+            index = deformed_source_G.id2index[str(id)]
+            deformed_source_G.nodes[index] = np.array([x, y])
+            i += 1
+
+        return deformed_source_G
+
+    prefix = './data/bn-mouse-kasthuri/'
+    source_nodes = [720, 941, 943, 939, 942, 944, 940]
+    target_nodes = [
+        [676, 853, 850, 851, 854, 848, 852, 849, 855],
+        [700, 915, 916, 918, 914, 913, 917],
+        [660, 782, 780, 784, 789, 786, 781, 787, 783]
+    ]
+    G = load_json_graph(prefix + 'graph-with-pos.json')
+
+    source = nx.Graph(G.subgraph(source_nodes))
+    source_G = Graph(source)
+    deformed_source_G = modify(source_G, source_nodes)
+
+    target_Gs = []
+    for i in range(len(target_nodes)):
+        target = nx.Graph(G.subgraph(target_nodes[i]))
+        target_G = Graph(target)
+        target_Gs.append(target_G)
+
+    markers = [[[source_nodes[i], target_nodes[k][i]] for i in [0, 1, -1]] for k in range(len(target_nodes))]
+    main(prefix, G, source_G, deformed_source_G, target_Gs, markers)
+
+def main(prefix, G, source_G, deformed_source_G, target_Gs, markers):
+    # intermediate_states = interpolate_v2(source_G, deformed_source_G, sequence=[941, 940, 943, 944, 942, 939])
+    intermediate_states_count = 4
+    intermediate_states = interpolate_v1(source_G, deformed_source_G, intermediate_states_count)
+    # intermediate_states = [source_G, deformed_source_G]
+
+    for i in range(len(target_Gs)):
+        target_G = target_Gs[i]
         result = modification_transfer(source_G, target_G, markers[i], intermediate_states, inter_res=True)
         deformed_target = result[0].to_networkx()
         align_target = result[1]['alignment'].to_networkx()
 
-        save_json_graph(target, prefix + '/result/target' + str(i) + '.json')
+        save_json_graph(target_G.to_networkx(), prefix + '/result/target' + str(i) + '.json')
         save_json_graph(align_target, prefix + '/result/aligned_target' + str(i) + '.json')
         save_json_graph(deformed_target, prefix + '/result/deformed_target' + str(i) + '.json')
 
@@ -129,7 +197,8 @@ def main_for_power():
 
     for k in range(len(intermediate_states)):
         inter_state = intermediate_states[k].to_networkx()
-        save_json_graph(inter_state , prefix + '/result/interpolation' + str(k) + '.json')
+        save_json_graph(inter_state, prefix + '/result/interpolation' + str(k) + '.json')
 
 if __name__ == '__main__':
-    main_for_power()
+    # main_for_power()
+    main_for_mouse()

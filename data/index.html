@@ -31,15 +31,15 @@
     </svg>
     <script src="./d3.v4.min.js"></script>
     <script>
-        // let path = './bn-mouse-kasthuri/'
+        let path = './bn-mouse-kasthuri/'
         // let path = './road-euroroad/'
-        let path = './power-662-bus/'
+        // let path = './power-662-bus/'
         // let path = './road-chesapeake/'
         addGraph('graph-with-pos', 50, 50, 800, 800)
         addGraph('new', 50, 1000, 800, 800)
 
         let n = 4 // target count
-        let m = 4 // interpolation count
+        let m = 6 // interpolation count
         for (let j = 0; j <= m; j++) {
             addGraph('result/interpolation' + j, 1000, 350 + j * 150, 100, 100)
         }
