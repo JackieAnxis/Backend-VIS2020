@@ -618,8 +618,8 @@ def main_for_mouse():
 
 
 if __name__ == '__main__':
-    main_for_power()
-    # main_for_mouse()
+    # main_for_power()
+    main_for_mouse()
 
     # prefix = './data/bn-mouse-kasthuri/'
     # source = load_json_graph(prefix + 'source.json')

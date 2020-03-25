@@ -16,17 +16,17 @@ def maximum_matching(matrix):
             res.append([i, j])
     return res
 
-def compute_distance_matrix(G0, G1):
-    n = G0.nodes.shape[0]
-    m = G1.nodes.shape[0]
+def compute_distance_matrix(V0, V1):
+    n = V0.shape[0]
+    m = V1.shape[0]
     distance_matrix = np.zeros((n, m))
     for i in range(n):
-        distance_matrix[i] = np.sum((G1.nodes - G0.nodes[i]) ** 2, axis=1)
+        distance_matrix[i] = np.sqrt(np.sum((V1 - V0[i]) ** 2, axis=1))
     return distance_matrix
 
 
 def build_correspondence(source_G, target_G, correspondence):
-    distance_matrix = compute_distance_matrix(source_G, target_G)
+    distance_matrix = compute_distance_matrix(source_G.nodes, target_G.nodes)
 
     for corr in correspondence: # the nodes has constructed the correspondence
         distance_matrix[corr[0]] = np.ones((1, distance_matrix.shape[1])) * -1
