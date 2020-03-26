@@ -176,9 +176,10 @@ def main_for_mouse():
 
 def main(prefix, G, source_G, deformed_source_G, target_Gs, markers):
     # intermediate_states = interpolate_v2(source_G, deformed_source_G, sequence=[941, 940, 943, 944, 942, 939])
-    intermediate_states_count = 4
-    intermediate_states = interpolate_v1(source_G, deformed_source_G, intermediate_states_count)
-    # intermediate_states = [source_G, deformed_source_G]
+    # intermediate_states_count = 4
+    # intermediate_states = interpolate_v1(source_G, deformed_source_G, intermediate_states_count)
+    intermediate_states = [source_G, deformed_source_G]
+    # intermediate_states = [deformed_source_G]
 
     for i in range(len(target_Gs)):
         target_G = target_Gs[i]

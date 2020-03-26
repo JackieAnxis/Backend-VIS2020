@@ -27,32 +27,38 @@
     <button
         style="width: 40px; height: 15px; border-radius: 3px; font-size: 10px; position: fixed; top: 20px; left: 20px;"
         id="toggleText">TEXT</button>
-    <svg id="container" width="2400" height="2000">
+    <svg id="container" width="2700" height="2000">
     </svg>
     <script src="./d3.v4.min.js"></script>
     <script>
-        let path = './mammalia-voles-plj-trapping-25/'
+        // let path = './mammalia-voles-plj-trapping-25/'
+        let path = './mammalia-voles-bhp-trapping-60/'
         // let path = './bn-mouse-kasthuri/'
         // let path = './road-euroroad/'
         // let path = './power-662-bus/'
         // let path = './road-chesapeake/'
+
         addGraph('graph-with-pos', 50, 50, 800, 800)
-        addGraph('new', 50, 1000, 800, 800)
+        addGraph('new', 900, 50, 800, 800)
+        addGraph('_new', 1800, 50, 800, 800)
 
-        let n = 4 // target count
-        let m = 3 // interpolation count
-        for (let j = 0; j <= m; j++) {
-            addGraph('result/interpolation' + j, 1000, 350 + j * 150, 100, 100)
-        }
+        // addGraph('graph-with-pos', 50, 50, 800, 800)
+        // addGraph('new', 50, 1000, 800, 800)
 
-        for (let i = 0; i <= n; i++) {
-            addGraph('result/target' + i, 1000 + (i + 1) * 150, 50, 100, 100)
-            addGraph('result/aligned_target' + i, 1000 + (i + 1) * 150, 200, 100, 100)
-            for (let j = 0; j <= m; j++) {
-                addGraph('result/deformed_target' + i + j, 1000 + (i + 1) * 150, 200 + (j + 1) * 150, 100, 100)
-            }
-            addGraph('result/deformed_target' + i, 1000 + (i + 1) * 150, 200 + (m + 2) * 150, 100, 100)
-        }
+        // let n = 4 // target count
+        // let m = 3 // interpolation count
+        // for (let j = 0; j <= m; j++) {
+        //     addGraph('result/interpolation' + j, 1000, 350 + j * 150, 100, 100)
+        // }
+
+        // for (let i = 0; i <= n; i++) {
+        //     addGraph('result/target' + i, 1000 + (i + 1) * 150, 50, 100, 100)
+        //     addGraph('result/aligned_target' + i, 1000 + (i + 1) * 150, 200, 100, 100)
+        //     for (let j = 0; j <= m; j++) {
+        //         addGraph('result/deformed_target' + i + j, 1000 + (i + 1) * 150, 200 + (j + 1) * 150, 100, 100)
+        //     }
+        //     addGraph('result/deformed_target' + i, 1000 + (i + 1) * 150, 200 + (m + 2) * 150, 100, 100)
+        // }
 
         let flag = false
         d3.select('#toggleText').on('click', function () {
