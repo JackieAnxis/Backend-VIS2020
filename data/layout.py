@@ -42,6 +42,29 @@ def overlap_removal(graph, layout):
 
     return resultLayout
 
+def SM(tlpgraph):
+    params = tlp.getDefaultPluginParameters('Stress Majorization (OGDF)', tlpgraph)
+    resultLayout = tlpgraph.getLayoutProperty('resultLayout')
+    success = tlpgraph.applyLayoutAlgorithm('FM^3 (OGDF)', resultLayout, params)
+
+    # or store the result of the algorithm in the default Tulip layout property named 'viewLayout'
+    # success = graph.applyLayoutAlgorithm('FM^3 (OGDF)', params)
+    return resultLayout
+
+def Orthotree(tlpgraph):
+    # get a dictionnary filled with the default plugin parameters values
+    # graph is an instance of the tlp.Graph class
+    params = tlp.getDefaultPluginParameters('MMM Example Nice Layout (OGDF)', tlpgraph)
+
+    # set any input parameter value if needed
+    # params['Layer spacing'] = ...
+    # params['Node spacing'] = ...
+
+    # either create or get a layout property from the graph to store the result of the algorithm
+    resultLayout = tlpgraph.getLayoutProperty('resultLayout')
+    success = tlpgraph.applyLayoutAlgorithm('MMM Example Nice Layout (OGDF)', resultLayout, params)
+    return resultLayout
+
 def FM3(tlpgraph):
     # get a dictionnary filled with the default plugin parameters values
     # graph is an instance of the tlp.Graph class
@@ -79,7 +102,9 @@ def FM3(tlpgraph):
 
 def layout(G):
     graph, nodes_map = nx2tlp(G)
-    resultLayout = FM3(graph)
+    # resultLayout = FM3(graph)
+    # resultLayout = SM(graph)
+    resultLayout = Orthotree(graph)
     resultLayout = overlap_removal(graph, resultLayout)
     for n in G.nodes:
         pos = resultLayout[nodes_map[n]]
@@ -88,7 +113,8 @@ def layout(G):
     return G
 
 if __name__ == '__main__':
-    path = './bn-mouse-kasthuri/'
+    # path = './bn-mouse-kasthuri/'
+    path = './power-662-bus/'
     filename = path + "graph.edgelist"
     G = nx.read_edgelist(filename, nodetype=int, data=(('weight', float),))
     G.to_undirected()

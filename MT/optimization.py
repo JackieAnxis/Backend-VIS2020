@@ -6,6 +6,16 @@ import numpy as np
 import networkx as nx
 from models.utils import load_json_graph, save_json_graph
 
+def magnify(source_G, rate):
+    V = source_G.nodes
+    n = V.shape[0]
+    center = np.mean(V, axis=0)
+    deformed_source_G = source_G.copy()
+    for i in range(n):
+        deformed_source_G.nodes[i] += (deformed_source_G.nodes[i] - center) * rate
+
+    return deformed_source_G
+
 def cal_radius(G):
     r = np.max(np.sqrt(np.sum((G.nodes[G.edges[:, 0]] - G.nodes[G.edges[:, 1]]) ** 2, axis=1)), axis=0)
     return r
@@ -32,7 +42,7 @@ def merge(G, subGs, iter=1000, alpha=1, beta=10, gamma=2000):
     r = cal_radius(G)
     surroundings_index = np.nonzero(np.sum(D[list(target_pos.keys())] < r, axis=0))[0]
     surroundings_id = [G.index2id[index] for index in surroundings_index]
-    print(surroundings_id)
+    print(len(surroundings_id))
     surroundings_G = Graph(G.to_networkx().subgraph(surroundings_id))
 
     d = np.min(D[list(target_pos.keys())][:, list(filter(lambda i: i not in target_pos, surroundings_index))], axis=0)
@@ -46,7 +56,6 @@ def merge(G, subGs, iter=1000, alpha=1, beta=10, gamma=2000):
         else:
             dis = np.min(D[list(target_pos.keys()), index])
             w = ((dis-min_d) / (max_d-min_d)) ** 6
-            print(id, w)
             new_target_pos[surroundings_G.id2index[id]] = [G.nodes[index], w]
 
     V = deform_v2(surroundings_G, new_target_pos, iter, alpha, beta, gamma)
@@ -57,16 +66,6 @@ def merge(G, subGs, iter=1000, alpha=1, beta=10, gamma=2000):
     return G0, G1
 
 if __name__ == '__main__':
-    def magnify(source_G, rate):
-        V = source_G.nodes
-        n = V.shape[0]
-        center = np.mean(V, axis=0)
-        deformed_source_G = source_G.copy()
-        for i in range(n):
-            deformed_source_G.nodes[i] += (deformed_source_G.nodes[i] - center) * rate
-
-        return deformed_source_G
-
     def modify(source_G, source_nodes):
         V = source_G.nodes
         n = V.shape[0]

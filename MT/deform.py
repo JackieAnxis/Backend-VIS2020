@@ -208,11 +208,11 @@ def deform(G, target_pos, iter=100, alpha=20, beta=0, gamma=200):
     print("residual of iteration", k, _res)
     return V
 
-def non_rigid_registration(source_G, target_G, markers):
-    target_G = target_G.copy()
+def non_rigid_registration(source_G, target_G, markers, alpha=10, beta=10, gamma=1000, iter=1000):
+    _target_G = target_G.copy()
 
-    R, t = aligning(source_G, target_G, markers)
-    target_G.nodes = target_G.nodes.dot(R.T) + t
+    R, t = aligning(source_G, _target_G, markers)
+    _target_G.nodes = _target_G.nodes.dot(R.T) + t
 
     target_pos = {}
     for mk in markers:
@@ -223,9 +223,13 @@ def non_rigid_registration(source_G, target_G, markers):
         target_pos[t_index].append(1) # weight
 
 
-    X = deform_v2(target_G, target_pos)
-    target_G.nodes = X
-    return target_G
+    X = deform_v2(_target_G, target_pos, iter, alpha, beta, gamma)
+    _target_G.nodes = X
+
+    # _R, _t = aligning(target_G, _target_G, np.array([[index, index] for index in target_G.index2id]))
+    # _target_G.nodes = _target_G.nodes.dot(_R.T) + _t
+
+    return _target_G
 
 if __name__ == '__main__':
     prefix = './data/power-662-bus/'

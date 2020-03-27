@@ -53,7 +53,19 @@ def build_correspondence(source_G, target_G, correspondence):
 
     corr = source_corr * target_corr
 
-    res = maximum_matching(corr)
+    _res = maximum_matching(corr)
+
+    # delete un-pleasing correspondece #
+    A = target_G.compute_adjacent_matrix()
+    L = np.diag(np.sum(A, axis=0)) - A
+    mean_adj_edge = L.dot(target_G.nodes)
+    mean_adj_edge_length = np.sqrt(np.sum(mean_adj_edge**2, axis=1))
+    res = []
+    for cor in _res:
+        length = np.sqrt(np.sum((source_G.nodes[cor[0]] - target_G.nodes[cor[1]])**2))
+        if length < mean_adj_edge_length[cor[1]] * 3:
+            res.append(cor)
+    # delete un-pleasing correspondece #
 
     #####
     correspondence = correspondence.tolist()

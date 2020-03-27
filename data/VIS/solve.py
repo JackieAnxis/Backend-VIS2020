@@ -18,7 +18,7 @@ for i in range(0, len(lines)):
             key = line[i]
             key2index[key] = i
     else:
-        if int(line[key2index['Year']]) >= 2018:
+        if int(line[key2index['Year']]) >= 1990:
             authors = line[key2index['AuthorNames-Deduped']].split(';')
             for x in range(0, len(authors)):
                 if authors[x] not in author2id:
