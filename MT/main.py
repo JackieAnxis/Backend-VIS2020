@@ -60,7 +60,7 @@ def modification_transfer(source_G, target_G, markers, intermediate_states=[], i
         # until no more correspondece are built
         marker_increasing = True
         while marker_increasing:
-            reg_target_G = non_rigid_registration(intermediate_state, target_G, markers, alpha=50, beta=10, gamma=1000, iter=1000)  # deformation
+            reg_target_G = non_rigid_registration(intermediate_state, target_G, markers, alpha=5, beta=1, gamma=1000, iter=1000)  # deformation
             new_markers = build_correspondence(intermediate_state, reg_target_G, markers)  # matching
             inter_markers.append(new_markers.copy())
             target_G = reg_target_G
@@ -148,7 +148,7 @@ def main_for_power():
         [71, 9, 7, 8, 216, 271, 12, 10, 11, 136, 135, 137, 138, 139, 269, 270, 436, 381, 101],
     ]
     markers = [
-        [[514, 337], [462, 194], [467, 222]],
+        [[514, 337], [462, 194], [467, 280]],
         [[514, 265], [462, 344], [467, 250]],
         [[514, 41], [462, 17], [467, 34]],
         # [[514, 399], [462, 373], [481, 610]],
@@ -231,20 +231,33 @@ def main(prefix, G, source_G, deformed_source_G, target_Gs, markers):
         deformed_target = result[0].to_networkx()
         align_target = result[1]['alignment'].to_networkx()
 
-        save_json_graph(target_G.to_networkx(), prefix + '/result/target' + str(i) + '.json')
+        target = target_G.to_networkx()
+        for node in target.nodes:
+            G.nodes[int(node)]['color'] = ['#436dba']
+            target.nodes[node]['color'] = ['#436dba']
+            align_target.nodes[node]['color'] = ['#436dba']
+            deformed_target.nodes[node]['color'] = ['#436dba']
+
+        save_json_graph(target, prefix + '/result/target' + str(i) + '.json')
         save_json_graph(align_target, prefix + '/result/aligned_target' + str(i) + '.json')
         save_json_graph(deformed_target, prefix + '/result/deformed_target' + str(i) + '.json')
 
         inter_deformaed_target_Gs = result[1]['deformations']
         for k in range(len(inter_deformaed_target_Gs)):
             inter_deformaed_target = inter_deformaed_target_Gs[k].to_networkx()
+            for node in inter_deformaed_target.nodes:
+                inter_deformaed_target.nodes[node]['color'] = ['#436dba']
             save_json_graph(inter_deformaed_target, prefix + '/result/deformed_target' + str(i) + str(k) + '.json')
 
     for k in range(len(intermediate_states)):
         inter_state = intermediate_states[k].to_networkx()
+        for node in inter_state.nodes:
+            G.nodes[int(node)]['color'] = ['#f06f6b']
+            inter_state.nodes[node]['color'] = ['#f06f6b']
         save_json_graph(inter_state, prefix + '/result/interpolation' + str(k) + '.json')
 
-    G0, G1 = merge(Graph(G), deformed_targets, iter=1000, alpha=10, beta=10, gamma=2000)
+    save_json_graph(G, prefix + '/result/pos.json')
+    G0, G1 = merge(Graph(G), deformed_targets, iter=1000, alpha=5, beta=1, gamma=200)
     save_json_graph(G0.to_networkx(), prefix + '/result/new.json')
 
 if __name__ == '__main__':
