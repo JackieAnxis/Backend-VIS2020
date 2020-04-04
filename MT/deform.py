@@ -59,7 +59,7 @@ def deform_v2(G, target_pos, iter=1000, alpha=100, beta=5, gamma=200):
     :param target_pos: dict, index 2 ndarray
     :return:
     '''
-    def laplacian(A, D, w=10):
+    def laplacian(A, D, w=1):
         L = (A * w + 1 - np.eye((A.shape[0]))) / (D + 0.00001)
         # L = A * w / (D + 0.00001)
         L = np.diag(np.sum(L, axis=0)) - L
@@ -69,10 +69,11 @@ def deform_v2(G, target_pos, iter=1000, alpha=100, beta=5, gamma=200):
     n = V.shape[0]
     adj = G.compute_adjacent_matrix()
     D = compute_distance_matrix(V, V)
-    L = laplacian(adj, D)
-    Lwx = laplacian(adj, D**2)
+    D2 = D**2
+    L = laplacian(adj, D2)
+    Lwd = laplacian(adj, D2*D)
 
-    C1 = Lwx.dot(V).flatten()[:, np.newaxis]
+    C1 = Lwd.dot(V).flatten()[:, np.newaxis]
     V0 = V.copy()
     V = V.copy()
     coe = np.zeros((len(target_pos) * 2, 2 * n))
@@ -114,21 +115,19 @@ def deform_v2(G, target_pos, iter=1000, alpha=100, beta=5, gamma=200):
     eps = 10**(-8)
     k = 0
     for k in range(iter):
-        new_D = compute_distance_matrix(V, V)
-        # new_Lwx = laplacian(adj, (D**2) * new_D)
-        # new_Lwdx = laplacian(adj, D * new_D)
-        new_Lwx = laplacian(adj, D * new_D)
-        new_Lwdx = laplacian(adj, new_D)
+        D_t = compute_distance_matrix(V, V)
+        Lwd_t = laplacian(adj, D2 * D_t)
+        Lwdv_t = laplacian(adj, D * D_t)
 
         M1 = np.zeros((2 * n, 2 * n))
-        M1[np.ix_(N * 2, N * 2)] = new_Lwx
-        M1[np.ix_(N * 2 + 1, N * 2 + 1)] = new_Lwx
+        M1[np.ix_(N * 2, N * 2)] = Lwd_t
+        M1[np.ix_(N * 2 + 1, N * 2 + 1)] = Lwd_t
 
         M2 = np.zeros((2 * n, 2 * n))
         M2[np.ix_(N * 2, N * 2)] = L
         M2[np.ix_(N * 2 + 1, N * 2 + 1)] = L
 
-        C2 = new_Lwdx.dot(V).flatten()[:, np.newaxis]
+        C2 = Lwdv_t.dot(V).flatten()[:, np.newaxis]
 
         M = np.vstack((M1 * alpha, M2 * beta, coe * gamma))
         C = np.vstack((C1 * alpha, C2 * beta, pos * gamma))
@@ -144,6 +143,82 @@ def deform_v2(G, target_pos, iter=1000, alpha=100, beta=5, gamma=200):
 
     print("residual of iteration", k, strs_)
     return V
+
+def deform_v3(G, target_pos, iter=1000, alpha=100, beta=5, gamma=200):
+    '''
+    combine minimize the distance and direction difference,
+    separate direction and distance from the direction protection.
+    distance: L_w
+    :param G: Graph object
+    :param target_pos: dict, index 2 ndarray
+    :return:
+    '''
+    def laplacian(A, D, w=10):
+        L = (A * w + 1 - np.eye((A.shape[0]))) / D
+        # L = A * w / (D + 0.00001)
+        # L = np.ones((A.shape[0], A.shape[1])) / D
+        L = np.diag(np.sum(L, axis=0)) - L
+        return L
+
+    V = G.nodes
+    n = V.shape[0]
+    N = np.arange(0, n)
+    eps = 10 ** (-4)
+
+    D = compute_distance_matrix(V, V) + eps
+    adj = G.compute_adjacent_matrix()
+    D2 = D ** 2
+    # L = laplacian(adj, D2)
+
+
+    V0 = V.copy()
+    V = V.copy()
+    j = 0
+    for index in target_pos:
+        weight = target_pos[index][1] # weight
+        V[index] = target_pos[index][0]
+        j += 2
+        for jndex in target_pos:
+            if jndex != index:
+                adj[index, jndex] = (beta * weight * target_pos[jndex][1])
+                D[index, jndex] = np.sqrt(np.sum((target_pos[index][0] - target_pos[jndex][0]) ** 2))
+            else:
+                D[index, jndex] = eps
+
+    L = laplacian(adj, 1)
+
+    def stress(L, V, D0, alpha, beta):
+        D = compute_distance_matrix(V, V)
+        STRS = np.sum((D - D0)**2 * (-L))
+        return STRS
+
+    strs = strs_ = 0
+    k = 0
+    for k in range(iter):
+        D_t = compute_distance_matrix(V, V) + eps
+        # Lwdv_t = laplacian(adj, D2 * D_t / D)
+        Lwdv_t = laplacian(adj, (D_t / D))
+
+        M = np.zeros((2 * n, 2 * n))
+        M[np.ix_(N * 2, N * 2)] = L
+        M[np.ix_(N * 2 + 1, N * 2 + 1)] = L
+
+        C = Lwdv_t.dot(V).flatten()[:, np.newaxis]
+
+        X = sparse.linalg.lsqr(M, C, iter_lim=5000, atol=1e-8, btol=1e-8, conlim=1e7, show=False)[0]
+        V_ = X.reshape((int(X.shape[0] / 2), 2))
+        strs_ = stress(L, V_, D, alpha, beta)
+        if k > 0:
+            if (strs - strs_) / strs < eps:
+                break
+        strs = strs_
+        V = V_
+    # T = np.array([[0, 0], [np.sqrt(3/20)+1, 1/2-np.sqrt(3 / 5)], [2, 1], [3 - np.sqrt(3/20), 1/2-np.sqrt(3 / 5)], [4, 0]])
+    # s0 = stress(L, T, D, alpha, beta)
+    # s1 = stress(L, V, D, alpha, beta)
+    print("residual of iteration", k, strs_)
+    return V
+
 
 def deform(G, target_pos, iter=100, alpha=20, beta=0, gamma=200):
     '''
@@ -232,7 +307,7 @@ def non_rigid_registration(source_G, target_G, markers, alpha=10, beta=10, gamma
     return _target_G
 
 if __name__ == '__main__':
-    prefix = './data/power-662-bus/'
+    prefix = './data/test/'
     source = nx.Graph()
     source.add_edges_from([[0,1], [1,2], [2,3], [3,4]])
     source.nodes[0]['x'] = 0.0
@@ -260,7 +335,7 @@ if __name__ == '__main__':
     G0.nodes = V
 
     G1 = source_G.copy()
-    V = deform_v2(source_G, target_pos, alpha=10, beta=1)
+    V = deform_v3(source_G, target_pos, alpha=10, beta=1)
     print(V)
     G1.nodes = V
     save_json_graph(source_G.to_networkx(), prefix + 'result/target0.json')

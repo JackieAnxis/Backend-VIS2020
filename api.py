@@ -24,9 +24,10 @@ def hello_world():
 
 @app.route('/whole-graph')
 def whole_graph():
-    # name = 'VIS'
-    name = 'power-662-bus'
+    name = 'VIS'
+    # name = 'power-662-bus'
     # name = 'bn-mouse-kasthuri'
+    # name = 'bn-mouse_visual-cortex_2'
     # name = 'email-Eu-core'
     # name = 'bio-DM-LC'
     # name = 'road-euroroad'

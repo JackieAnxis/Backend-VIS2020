@@ -14,7 +14,9 @@ def connected_component_subgraphs(G):
 # path = './data/bn-mouse-kasthuri/'
 # path = './data/power-662-bus/'
 # path = './data/mammalia-voles-plj-trapping-25/'
-path = './data/mammalia-voles-bhp-trapping-60/'
+# path = './data/mammalia-voles-bhp-trapping-60/'
+# path = './data/bn-mouse_visual-cortex_2/'
+# path = './data/VIS/'
 G = nx.read_edgelist(path + "graph.edgelist", nodetype=int,
                      data=(('weight', float),))
 G.to_undirected()

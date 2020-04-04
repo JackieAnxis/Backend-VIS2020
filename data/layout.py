@@ -55,7 +55,7 @@ def Orthotree(tlpgraph):
     # get a dictionnary filled with the default plugin parameters values
     # graph is an instance of the tlp.Graph class
     params = tlp.getDefaultPluginParameters('MMM Example Nice Layout (OGDF)', tlpgraph)
-
+    # params = tlp.getDefaultPluginParameters('LinLog', tlpgraph)
     # set any input parameter value if needed
     # params['Layer spacing'] = ...
     # params['Node spacing'] = ...
@@ -63,6 +63,7 @@ def Orthotree(tlpgraph):
     # either create or get a layout property from the graph to store the result of the algorithm
     resultLayout = tlpgraph.getLayoutProperty('resultLayout')
     success = tlpgraph.applyLayoutAlgorithm('MMM Example Nice Layout (OGDF)', resultLayout, params)
+    # success = tlpgraph.applyLayoutAlgorithm('LinLog', resultLayout, params)
     return resultLayout
 
 def FM3(tlpgraph):
@@ -102,9 +103,9 @@ def FM3(tlpgraph):
 
 def layout(G):
     graph, nodes_map = nx2tlp(G)
-    # resultLayout = FM3(graph)
+    resultLayout = FM3(graph)
     # resultLayout = SM(graph)
-    resultLayout = Orthotree(graph)
+    # resultLayout = Orthotree(graph)
     resultLayout = overlap_removal(graph, resultLayout)
     for n in G.nodes:
         pos = resultLayout[nodes_map[n]]
@@ -114,7 +115,9 @@ def layout(G):
 
 if __name__ == '__main__':
     # path = './bn-mouse-kasthuri/'
-    path = './power-662-bus/'
+    # path = './bn-mouse_visual-cortex_2/'
+    # path = './power-662-bus/'
+    path = './VIS/'
     filename = path + "graph.edgelist"
     G = nx.read_edgelist(filename, nodetype=int, data=(('weight', float),))
     G.to_undirected()

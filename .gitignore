@@ -7,3 +7,5 @@ venv/
 *.json
 *.csv
 __pycache__
+*/save/
+fgm/data/

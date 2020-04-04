@@ -18,16 +18,19 @@ for i in range(0, len(lines)):
             key = line[i]
             key2index[key] = i
     else:
-        if int(line[key2index['Year']]) >= 1990:
+        if int(line[key2index['Year']]) >= 2010:
             authors = line[key2index['AuthorNames-Deduped']].split(';')
             for x in range(0, len(authors)):
-                if authors[x] not in author2id:
-                        author2id[authors[x]] = len(author2id)
+                author = line[key2index['Year']] + '-' + authors[x]
+                if author not in author2id:
+                        author2id[author] = len(author2id)
             # for y in range(1, len(authors)):
             #     edges.append([author2id[authors[0]], author2id[authors[y]]])
             for x in range(0, len(authors)):
+                author0 = line[key2index['Year']] + '-' + authors[x]
                 for y in range(x + 1, len(authors)):
-                    edges.append([author2id[authors[x]], author2id[authors[y]]])
+                    author1 = line[key2index['Year']] + '-' + authors[y]
+                    edges.append([author2id[author0], author2id[author1]])
 print(author2id)
 f = open('author2id.csv', 'w')
 writer = csv.writer(f, delimiter=',')

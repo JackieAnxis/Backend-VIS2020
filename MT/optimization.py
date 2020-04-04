@@ -1,4 +1,4 @@
-from MT.deform import deform_v2, aligning
+from MT.deform import deform_v3, aligning
 from MT.Graph import Graph
 from MT.correspondence import compute_distance_matrix
 from data.layout import layout
@@ -17,30 +17,34 @@ def magnify(source_G, rate):
     return deformed_source_G
 
 def cal_radius(G):
-    r = np.max(np.sqrt(np.sum((G.nodes[G.edges[:, 0]] - G.nodes[G.edges[:, 1]]) ** 2, axis=1)), axis=0) * 2
+    r = np.max(np.sqrt(np.sum((G.nodes[G.edges[:, 0]] - G.nodes[G.edges[:, 1]]) ** 2, axis=1)), axis=0)
     return r
 
 def merge(G, subGs, iter=1000, alpha=1, beta=10, gamma=2000):
     D = compute_distance_matrix(G.nodes, G.nodes)
     target_pos = {}
+    target_r = {}
     for subG in subGs:
+        r = cal_radius(subG)
         for id in subG.id2index:
             index = G.id2index[id]
             if index not in target_pos:
+                target_r[index] = []
                 target_pos[index] = []
+            target_r[index].append(r)
             target_pos[index].append(subG.nodes[subG.id2index[id]])
 
     G0 = G.copy()
     G1 = G.copy()
     for index in target_pos:
+        target_r[index] = np.mean(target_r[index])
         target_pos[index] = [np.mean(target_pos[index], axis=0), 1]
         G1.nodes[index] = target_pos[index][0]
 
-    V = deform_v2(G, target_pos, iter, alpha, beta, gamma)
+    V = deform_v3(G, target_pos, iter, alpha, beta, gamma)
     G0.nodes = V
 
-    # r = cal_radius(G)
-    # surroundings_index = np.nonzero(np.sum(D[list(target_pos.keys())] < r, axis=0))[0]
+    # surroundings_index = np.nonzero(np.sum(D[list(target_pos.keys())] < np.array(list(target_r.values()))[:, np.newaxis], axis=0))[0]
     # surroundings_id = [G.index2id[index] for index in surroundings_index]
     # print(len(surroundings_id))
     # surroundings_G = Graph(G.to_networkx().subgraph(surroundings_id))
@@ -55,10 +59,13 @@ def merge(G, subGs, iter=1000, alpha=1, beta=10, gamma=2000):
     #         new_target_pos[surroundings_G.id2index[id]] = target_pos[index]
     #     else:
     #         dis = np.min(D[list(target_pos.keys()), index])
-    #         w = ((dis-min_d) / (max_d-min_d)) ** 6
+    #         w = ((dis-min_d) / (max_d-min_d)) ** 6 / 100
+    #         print(dis, w)
     #         new_target_pos[surroundings_G.id2index[id]] = [G.nodes[index], w]
     #
-    # V = deform_v2(surroundings_G, new_target_pos, iter, alpha, beta, gamma)
+    # V = deform_v3(surroundings_G, new_target_pos, iter, alpha, beta, gamma)
+    # # surroundings_G.nodes = V
+    # # G0 = surroundings_G
     # for index in range(V.shape[0]):
     #     id = surroundings_G.index2id[index]
     #     G0_index = G0.id2index[id]
