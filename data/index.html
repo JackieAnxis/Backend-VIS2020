@@ -39,26 +39,39 @@
         // let path = './road-euroroad/'
         // let path = './power-662-bus/'
         // let path = './road-chesapeake/'
-        let path = './VIS/'
+        let path = './VIS/';
+
+        ["asgGaX",
+            "asgPm",
+            "asgPm",
+            "asgSmac",
+            "asgIpfpU",
+            "asgIpfpS",
+            "asgRrwm",
+            "asgFgmU",
+            "asgFgmD"
+        ].forEach((name, i) => {
+            addGraph('result/' + name, 50 + i * 300, 50, 200, 200)
+        });
 
         // addGraph('graph-with-pos', 50, 50, 1800, 1800)
-        addGraph('result/pos', 50, 50, 800, 800)
-        addGraph('result/new', 50, 1000, 800, 800)
+        // addGraph('result/pos', 50, 50, 800, 800)
+        // addGraph('result/new', 50, 1000, 800, 800)
 
-        let n = 26 // target count
-        let m = 1 // interpolation count
-        for (let j = 0; j <= m; j++) {
-            addGraph('result/interpolation' + j, 1000, 350 + j * 150, 100, 100)
-        }
+        // let n = 26 // target count
+        // let m = 1 // interpolation count
+        // for (let j = 0; j <= m; j++) {
+        //     addGraph('result/interpolation' + j, 1000, 350 + j * 150, 100, 100)
+        // }
 
-        for (let i = 0; i <= n; i++) {
-            addGraph('result/target' + i, 1000 + (i + 1) * 150, 50, 100, 100)
-            addGraph('result/aligned_target' + i, 1000 + (i + 1) * 150, 200, 100, 100)
-            for (let j = 0; j <= m; j++) {
-                addGraph('result/deformed_target' + i + '_' + j, 1000 + (i + 1) * 150, 200 + (j + 1) * 150, 100, 100)
-            }
-            addGraph('result/deformed_target' + i, 1000 + (i + 1) * 150, 200 + (m + 2) * 150, 100, 100)
-        }
+        // for (let i = 0; i <= n; i++) {
+        //     addGraph('result/target' + i, 1000 + (i + 1) * 150, 50, 100, 100)
+        //     addGraph('result/aligned_target' + i, 1000 + (i + 1) * 150, 200, 100, 100)
+        //     for (let j = 0; j <= m; j++) {
+        //         addGraph('result/deformed_target' + i + '_' + j, 1000 + (i + 1) * 150, 200 + (j + 1) * 150, 100, 100)
+        //     }
+        //     addGraph('result/deformed_target' + i, 1000 + (i + 1) * 150, 200 + (m + 2) * 150, 100, 100)
+        // }
 
         let flag = false
         d3.select('#toggleText').on('click', function () {

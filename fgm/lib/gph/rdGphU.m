@@ -1,4 +1,4 @@
-function gph = rdGphU(path)
+function gph = rdGphU(val)
 % Generate a graph by connecting points.
 %
 % Remark
@@ -25,7 +25,9 @@ function gph = rdGphU(path)
 
 % dimension
 
-val = jsondecode(fileread(path));
+%fileread(json)
+% edge
+% [Eg, vis] = gphEg(Pt, parGph);
 
 Ptx = [];
 Pty = [];
@@ -44,8 +46,8 @@ for i=1:n
 end
 Pt = [Ptx;Pty];
 
-Egs = [];
-Egt = [];
+Eg1 = [];
+Eg2 = [];
 m = size(val.links, 1);
 for i=1:m
     link=val.links(i:i);
@@ -53,14 +55,13 @@ for i=1:m
     target = str2num(link.target);
     source = find(index2id==source);
     target = find(index2id==target);
-    Egs = [Egs, source, target];
-    Egt = [Egt, target, source];
+    Eg1 = [Eg1, source, target];
+    Eg2 = [Eg2, target, source];
 end
-Eg = [Egs;Egt];
+Eg = [Eg1;Eg2];
 
-% edge
-% [Eg, vis] = gphEg(Pt, parGph);
-
+%n = size(Pt, 2);
+fprintf('size %d', n);
 % incidence matrix
 [G, H] = gphEg2IncU(Eg, n);
 
