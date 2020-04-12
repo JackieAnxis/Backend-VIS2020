@@ -1,7 +1,9 @@
 clear variables;
 prSet(1);
 
-r = fgm('./data/test/source.json', './data/test/target.json');
+json{1} = fileread('../data/VIS/result/interpolation0.json');
+json{2} = fileread('../data/VIS/result/target5.json');
+r = fgm(json{1}, json{2}, 'FgmU');
 %source = st('value', './data/test/source.json');
 %target = st('value', './data/test/target.json');
 %source = './data/test/source.json';

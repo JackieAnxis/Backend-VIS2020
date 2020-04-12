@@ -153,7 +153,7 @@ def deform_v3(G, target_pos, iter=1000, alpha=100, beta=5, gamma=200):
     :param target_pos: dict, index 2 ndarray
     :return:
     '''
-    def laplacian(A, D, w=10):
+    def laplacian(A, D, w=0):
         L = (A * w + 1 - np.eye((A.shape[0]))) / D
         # L = A * w / (D + 0.00001)
         # L = np.ones((A.shape[0], A.shape[1])) / D
@@ -303,6 +303,7 @@ def non_rigid_registration(source_G, target_G, markers, alpha=10, beta=10, gamma
 
     # _R, _t = aligning(target_G, _target_G, np.array([[index, index] for index in target_G.index2id]))
     # _target_G.nodes = _target_G.nodes.dot(_R.T) + _t
+    # _target_G.nodes = (_target_G.nodes - t).dot(np.linalg.inv(R).T)  ############
 
     return _target_G
 

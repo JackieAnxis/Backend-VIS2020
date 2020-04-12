@@ -1,3 +1,4 @@
+import json
 import matlab.engine
 import numpy as np
 import networkx as nx
@@ -6,22 +7,27 @@ from MT.deform import aligning
 from models.utils import load_json_graph, save_json_graph
 
 
-def fgm(source_path, target_path):
-    eng = matlab.engine.start_matlab()
-    # prefix = './data/VIS/'
-    # source = prefix + 'result/interpolation0.json' # json.load(f)
-    # target = prefix + 'result/target5.json'
-    # source = load_json_graph(source_path)
-    # target = load_json_graph(target_path)
-    # source_G = Graph(source)
-    # target_G = Graph(target)
-    # Pts = [source_G.nodes.tolist(), target_G.nodes.tolist()]
-    # Egs = [np.vstack((source_G.edges, source_G.edges[:, [1,0]])).astype('int64').tolist(), np.vstack((target_G.edges, target_G.edges[:, [1,0]])).astype('int64').tolist()]
+def fgm(source, target, name="FgmU"):
+    '''
 
+    :param source:
+    :param target:
+    :param name:
+            "Ga"
+            "Pm"
+            "Pm"
+            "Smac"
+            "IpfpU"
+            "IpfpS"
+            "Rrwm"
+            "FgmU"
+            "FgmD"
+    :return:
+    '''
+    eng = matlab.engine.start_matlab()
     eng.cd(r'./fgm', nargout=0)
     eng.addPath(nargout=0)
-    r = eng.fgm('.' + source_path, '.' + target_path)
-
+    r = eng.fgm(source, target, name)
     source_index2id = np.array(r['sourceindex2id'][0], dtype=np.int32)
     target_index2id = np.array(r['targetindex2id'][0], dtype=np.int32)
 
@@ -30,17 +36,24 @@ def fgm(source_path, target_path):
         if name != 'sourceindex2id' and name != 'targetindex2id':
             x = np.array(r[name]).nonzero()
             cor = np.vstack((source_index2id[np.ix_(x[0])], target_index2id[np.ix_(x[1])]))
-            res[name] = cor.T # .tolist()
+            res[name] = cor.T
     return res
 
 if __name__ == '__main__':
     prefix = './data/VIS/result/'
-    source = prefix + 'interpolation0.json' # json.load(f)
-    target = prefix + 'target5.json'
+    source_path = prefix + 'interpolation0.json' # json.load(f)
+    target_path = prefix + 'target5.json'
+
+
+    with open(source_path) as f:
+        source = json.dumps(json.load(f))
+    with open(target_path) as f:
+        target = json.dumps(json.load(f))
+
     res = fgm(source, target)
 
-    source = load_json_graph(source)
-    target = load_json_graph(target)
+    source = load_json_graph(source_path)
+    target = load_json_graph(target_path)
     source_G = Graph(source)
     target_G = Graph(target)
 

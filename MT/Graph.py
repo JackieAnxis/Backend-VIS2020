@@ -51,9 +51,11 @@ class Graph():
         self.adj_matrix = np.zeros((0, 0))
         self.euc_adj_matrix = np.zeros((0, 0))
         self.euc_adj_R = 0
+        self.graph_distance_matrix = np.zeros((0, 0))
     
     def copy(self):
         new_G = Graph(self.rawgraph)
+        new_G.graph_distance_matrix = self.graph_distance_matrix.copy()
         return new_G
 
     def to_networkx(self):
@@ -221,3 +223,18 @@ class Graph():
                         self.euc_adj_matrix[i, j] = 1
                         self.euc_adj_matrix[j, i] = 1
             return self.euc_adj_matrix
+
+    def compute_graph_distance_matrix(self):
+        if self.graph_distance_matrix.shape[0]:
+            return self.graph_distance_matrix
+        distances = dict(nx.all_pairs_shortest_path_length(self.rawgraph))
+        self.graph_distance_matrix = np.zeros((self.nodes.shape[0], self.nodes.shape[0]))
+        for i in range(self.nodes.shape[0]):
+            idi = self.index2id[i]
+            for j in range(i + 1, self.nodes.shape[0]):
+                idj = self.index2id[j]
+                self.graph_distance_matrix[i, j] = self.graph_distance_matrix[j, i] = distances[idi][idj]
+        return self.graph_distance_matrix
+
+
+

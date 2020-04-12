@@ -35,13 +35,9 @@ index2id = [];
 n = size(val.nodes, 1);
 for i=1:n
     node=val.nodes(i:i);
-    fprintf('value of x: %f\n', node.x);
-    fprintf('value of y: %f\n', node.y);
-    fprintf('value of id: %s\n', node.id);
     Ptx = [Ptx, node.x];
     Pty = [Pty, node.y];
     id = str2num(node.id);
-    fprintf('value of id: %d\n', id);
     index2id = [index2id, id];
 end
 Pt = [Ptx;Pty];

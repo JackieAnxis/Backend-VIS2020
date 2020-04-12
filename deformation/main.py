@@ -616,6 +616,8 @@ def main_for_mouse():
     # fused_graph = fuse_main(G.rawgraph, deformed_targets)
     # save_json_graph(fused_graph, prefix + 'new.json')
 
+def main_for_price():
+
 
 if __name__ == '__main__':
     # main_for_power()

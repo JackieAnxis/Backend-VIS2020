@@ -1,4 +1,4 @@
-function r = fgm(sourcePath, targetPath)
+function r = fgm(source, target, name)
 % clear variables;
 
 %% src parameter
@@ -8,8 +8,10 @@ asgT = st('alg', 'truth');
 %% algorithm parameter
 [pars, algs] = gmPar(2);
 
-json{1} = jsondecode(fileread(sourcePath));
-json{2} = jsondecode(fileread(targetPath));
+%json{1} = jsondecode(fileread(source));
+%json{2} = jsondecode(fileread(target));
+json{1} = jsondecode(source);
+json{2} = jsondecode(target);
 
 gphs{1} = rdGphU(json{1});
 gphs{2} = rdGphU(json{2});
@@ -25,69 +27,61 @@ Ct = ones(size(KP));
 gphDs = gphU2Ds(gphs);
 KQD = [KQ, KQ; KQ, KQ];
 
-%% GA
-asgGa = gm(K, Ct, asgT, pars{1}{:});
-% asgGaX = asgGa.X
-% save './data/test/ga.mat' asgGaX
-
-%% PM
-asgPm = pm(K, KQ, gphs, asgT);
-% asgPmX = asgPm.X
-% save './data/test/pm.mat' asgPmX
-
-%% SM
-asgSm = gm(K, Ct, asgT, pars{3}{:});
-% asgPmX = asgPm.X
-% save './data/test/sm.mat' asgPmX
-
-%% SMAC
-asgSmac = gm(K, Ct, asgT, pars{4}{:});
-% asgSmacX = asgSmac.X
-% save './data/test/smac.mat' asgSmacX
-
-%% IPFP-U
-asgIpfpU = gm(K, Ct, asgT, pars{5}{:});
-% asgIpfpUX = asgIpfpU.X
+%if strcmp(name, 'Ga')
+    %% GA
+    asgGa = gm(K, Ct, asgT, pars{1}{:});
+    r.Ga = asgGa.X;
+    % asgGaX = asgGa.X
+    % save './data/test/ga.mat' asgGaX
+%elseif strcmp(name, 'Pm')
+    %% PM
+    asgPm = pm(K, KQ, gphs, asgT);
+    r.Pm = asgPm.X;
+    % asgPmX = asgPm.X
+    % save './data/test/pm.mat' asgPmX
+%elseif strcmp(name, 'Sm')
+    %% SM
+    asgSm = gm(K, Ct, asgT, pars{3}{:});
+    r.Sm = asgSm.X;
+    % asgPmX = asgPm.X
+    % save './data/test/sm.mat' asgPmX
+%elseif strcmp(name, 'Smac')
+    %% SMAC
+    asgSmac = gm(K, Ct, asgT, pars{4}{:});
+    r.Smac = asgSmac.X;
+    % asgSmacX = asgSmac.X
+    % save './data/test/smac.mat' asgSmacX
+%elseif strcmp(name, 'IpfpU')
+    %% IPFP-U
+    asgIpfpU = gm(K, Ct, asgT, pars{5}{:});
+    r.IpfpU = asgIpfpU.X;
+    % asgIpfpUX = asgIpfpU.X
 % save './data/test/ipfpu.mat' asgIpfpUX
-
-%% IPFP-S
-asgIpfpS = gm(K, Ct, asgT, pars{6}{:});
-% asgIpfpSX = asgIpfpS.X
-% save './data/test/ipfps.mat' asgIpfpSX
-
-%% RRWM
-asgRrwm = gm(K, Ct, asgT, pars{7}{:});
-% asgRrwmX = asgRrwm.X
-% save './data/test/rrwm.mat' asgRrwmX
-
-%% FGM-U
-asgFgmU = fgmU(KP, KQ, Ct, gphs, asgT, pars{8}{:});
-% asgFgmUX = asgFgmU.X
-% save './data/test/fgmu.mat' asgFgmUX
-
-%% FGM-D
-asgFgmD = fgmD(KP, KQD, Ct, gphDs, asgT, pars{9}{:});
-% asgFgmDX = asgFgmD.X
-% save './data/test/fgmd.mat' asgFgmDX
-
-%% GA
-r.asgGa = asgGa.X
-%% PM
-r.asgPm = asgPm.X
-%% SM
-r.asgSm = asgSm.X
-%% SMAC
-r.asgSmac = asgSmac.X
-%% IPFP-U
-r.asgIpfpU = asgIpfpU.X
-%% IPFP-S
-r.asgIpfpS = asgIpfpS.X
-%% RRWM
-r.asgRrwm = asgRrwm.X
-%% FGM-U
-r.asgFgmU = asgFgmU.X
-%% FGM-D
-r.asgFgmD = asgFgmD.X
+%elseif strcmp(name, 'IpfpS')
+    %% IPFP-S
+    asgIpfpS = gm(K, Ct, asgT, pars{6}{:});
+    r.IpfpS = asgIpfpS.X;
+    % asgIpfpSX = asgIpfpS.X
+    % save './data/test/ipfps.mat' asgIpfpSX
+%elseif strcmp(name, 'Rrwm')
+    %% RRWM
+    asgRrwm = gm(K, Ct, asgT, pars{7}{:});
+    r.Rrwm = asgRrwm.X;
+    % asgRrwmX = asgRrwm.X
+    % save './data/test/rrwm.mat' asgRrwmX
+%elseif strcmp(name, 'FgmD')
+    %% FGM-D
+    asgFgmD = fgmD(KP, KQD, Ct, gphDs, asgT, pars{9}{:});
+    r.FgmD = asgFgmD.X;
+    % asgFgmDX = asgFgmD.X
+    % save './data/test/fgmd.mat' asgFgmDX
+%elseif strcmp(name, 'FgmU)
+    %% FGM-U
+    asgFgmU = fgmU(KP, KQ, Ct, gphs, asgT, pars{8}{:});
+    r.FgmU = asgFgmU.X;
+    % asgFgmUX = asgFgmU.X
+    % save './data/test/fgmu.mat' asgFgmUX
+%end
 
 r.sourceindex2id = gphs{1}.index2id
 % save './data/test/sourceindex2id.mat' sourceindex2id

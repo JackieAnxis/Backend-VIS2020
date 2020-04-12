@@ -1,10 +1,10 @@
-from MT.deform import deform_v3, aligning
+import numpy as np
+
 from MT.Graph import Graph
 from MT.correspondence import compute_distance_matrix
-from data.layout import layout
-import numpy as np
-import networkx as nx
+from MT.deform import deform_v2, deform_v3
 from models.utils import load_json_graph, save_json_graph
+
 
 def magnify(source_G, rate):
     V = source_G.nodes
@@ -41,7 +41,7 @@ def merge(G, subGs, iter=1000, alpha=1, beta=10, gamma=2000):
         target_pos[index] = [np.mean(target_pos[index], axis=0), 1]
         G1.nodes[index] = target_pos[index][0]
 
-    V = deform_v3(G, target_pos, iter, alpha, beta, gamma)
+    V = deform_v2(G, target_pos, iter, alpha, beta, gamma)
     G0.nodes = V
 
     # surroundings_index = np.nonzero(np.sum(D[list(target_pos.keys())] < np.array(list(target_r.values()))[:, np.newaxis], axis=0))[0]

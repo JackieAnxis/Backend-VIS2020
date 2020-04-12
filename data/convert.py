@@ -1,11 +1,12 @@
-import sys
 import os
+import sys
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 import csv
 import json
 import networkx as nx
 from networkx.readwrite import json_graph
-from data.layout import layout
+from models.layout import layout
 
 def connected_component_subgraphs(G):
     for c in nx.connected_components(G):
@@ -17,6 +18,8 @@ def connected_component_subgraphs(G):
 # path = './data/mammalia-voles-bhp-trapping-60/'
 # path = './data/bn-mouse_visual-cortex_2/'
 # path = './data/VIS/'
+# path = './data/price/'
+path = './data/email/'
 G = nx.read_edgelist(path + "graph.edgelist", nodetype=int,
                      data=(('weight', float),))
 G.to_undirected()

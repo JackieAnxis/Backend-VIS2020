@@ -33,52 +33,55 @@
     <script>
         // let path = './mammalia-voles-plj-trapping-25/'
         // let path = './mammalia-voles-bhp-trapping-60/'
-        // let path = './bn-mouse-kasthuri/'
+        // let path = './bn-mouse-kasthuri/';
         // let path = './test/'
         // let path = './bn-mouse_visual-cortex_2/'
         // let path = './road-euroroad/'
-        // let path = './power-662-bus/'
+        let path = './power-662-bus/';
         // let path = './road-chesapeake/'
-        let path = './VIS/';
+        // let path = './VIS/';
+        // let path = './email/';
+        // let path = './price/';
+        // let path = './synthetic/';
 
-        ["asgGaX",
-            "asgPm",
-            "asgPm",
-            "asgSmac",
-            "asgIpfpU",
-            "asgIpfpS",
-            "asgRrwm",
-            "asgFgmU",
-            "asgFgmD"
-        ].forEach((name, i) => {
-            addGraph('result/' + name, 50 + i * 300, 50, 200, 200)
-        });
+        // ["asgGa",
+        //     "asgPm",
+        //     "asgPm",
+        //     "asgSmac",
+        //     "asgIpfpU",
+        //     "asgIpfpS",
+        //     "asgRrwm",
+        //     "asgFgmU",
+        //     "asgFgmD"
+        // ].forEach((name, i) => {
+        //     addGraph('result/' + name, 50 + i * 300, 50, 200, 200)
+        // });
 
         // addGraph('graph-with-pos', 50, 50, 1800, 1800)
-        // addGraph('result/pos', 50, 50, 800, 800)
-        // addGraph('result/new', 50, 1000, 800, 800)
+        addGraph('result/pos', 50, 50, 800, 800)
+        addGraph('result/new', 50, 1000, 800, 800)
 
-        // let n = 26 // target count
-        // let m = 1 // interpolation count
-        // for (let j = 0; j <= m; j++) {
-        //     addGraph('result/interpolation' + j, 1000, 350 + j * 150, 100, 100)
-        // }
+        let n = 10 // target count
+        let m = 1 // interpolation count
+        for (let j = 0; j <= m; j++) {
+            addGraph('result/interpolation' + j, 1000, 350 + j * 150, 100, 100)
+        }
 
-        // for (let i = 0; i <= n; i++) {
-        //     addGraph('result/target' + i, 1000 + (i + 1) * 150, 50, 100, 100)
-        //     addGraph('result/aligned_target' + i, 1000 + (i + 1) * 150, 200, 100, 100)
-        //     for (let j = 0; j <= m; j++) {
-        //         addGraph('result/deformed_target' + i + '_' + j, 1000 + (i + 1) * 150, 200 + (j + 1) * 150, 100, 100)
-        //     }
-        //     addGraph('result/deformed_target' + i, 1000 + (i + 1) * 150, 200 + (m + 2) * 150, 100, 100)
-        // }
+        for (let i = 0; i <= n; i++) {
+            addGraph('result/target' + i, 1000 + (i + 1) * 150, 50, 100, 100)
+            addGraph('result/aligned_target' + i, 1000 + (i + 1) * 150, 200, 100, 100)
+            for (let j = 0; j <= m; j++) {
+                addGraph('result/deformed_target' + i + '_' + j, 1000 + (i + 1) * 150, 200 + (j + 1) * 150, 100, 100)
+            }
+            addGraph('result/deformed_target' + i, 1000 + (i + 1) * 150, 200 + (m + 2) * 150, 100, 100)
+        }
 
         let flag = false
         d3.select('#toggleText').on('click', function () {
             flag = !flag
             let font = 'font-size: 0'
             if (flag) {
-                font = 'font-size: 7px'
+                font = 'font-size: 3px'
             }
             d3.selectAll('text').attr('style', font)
         })
@@ -155,7 +158,7 @@
                             return "#cacaca"
                         }
                     })
-                    .attr("stroke-width", "1")
+                    .attr("stroke-width", "0.5")
                     .attr('source', d => d.source.id)
                     .attr('target', d => d.target.id)
 
@@ -165,7 +168,7 @@
                     .data(graph.nodes)
                     .enter()
                     .append("circle")
-                    .attr("r", "3")
+                    .attr("r", "1.5")
                     .attr('fill', d => {
                         if ('color' in d) {
                             return colourBlend(d['color'])
@@ -188,10 +191,10 @@
                     .enter()
                     .append("text")
                     .attr("x", function (d) {
-                        return d.x + 5;
+                        return d.x + 1;
                     })
                     .attr("y", function (d) {
-                        return d.y;
+                        return d.y + 1;
                     })
                     .text(d => d.id)
                     .attr('font-size', '0px')
