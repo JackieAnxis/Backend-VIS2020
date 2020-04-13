@@ -55,14 +55,15 @@ def modification_transfer(source_G, target_G, markers, intermediate_states=[], i
 
     # alignment
     raw_target_G = target_G.copy()
-    R, t = aligning(source_G, target_G, markers)
+    R0, t0 = aligning(source_G, target_G, markers)
     align_target_G = target_G.copy()
-    align_target_G.nodes = target_G.nodes.dot(R.T) + t
-
+    align_target_G.nodes = target_G.nodes.dot(R0.T) + t0
 
     # deform to the final state through intermediate states
     deformation_target_Gs = []  # every deformations, return to intermediate results
     inter_markers = []  # every matchings, return to intermediate results
+    # R = np.eye(2)
+    # t = np.zeros((2))
     for intermediate_state in intermediate_states:
         # deformation and matching (target 2 source)
         # until no more correspondece are built
@@ -87,9 +88,10 @@ def modification_transfer(source_G, target_G, markers, intermediate_states=[], i
         deformation_target_G.nodes = target_G.nodes
         deformation_target_Gs.append(deformation_target_G)
 
-    # R, t = aligning(raw_target_G, target_G, np.array([[index, index] for index in target_G.index2id]))
-    # target_G.nodes = target_G.nodes.dot(R.T) + t
-    target_G.nodes = (target_G.nodes - t).dot(np.linalg.inv(R).T) ############
+    R1, t1 = aligning(raw_target_G, deformation_target_Gs[0], np.array([[index, index] for index in target_G.index2id]))
+    target_G.nodes = target_G.nodes.dot(R1.T) + t1
+    # target_G.nodes = (target_G.nodes.dot(R1.T) + t1 - t0).dot(np.linalg.inv(R0).T)
+    # target_G.nodes = (target_G.nodes - t).dot(np.linalg.inv(R).T) ############
 
     if inter_res:
         return target_G, {
@@ -109,9 +111,6 @@ def main(prefix, G, source_G, deformed_source_G, target_Gs, markers):
 
     shutil.rmtree(prefix + "result")
     os.mkdir(prefix + "result")
-
-    # R, t = aligning(source_G, deformed_source_G, np.array([[index, index] for index in source_G.index2id]))
-    # deformed_source_G.nodes = deformed_source_G.nodes.dot(R.T) + t
 
     deformed_targets = [deformed_source_G]
     for i in range(len(target_Gs)):
@@ -704,8 +703,8 @@ def main_for_price():
     def modify(graph):
         id2pos = {"3":{"x":603.1899784256054,"y":621.8612844808738},"112":{"x":356.4605163829269,"y":224.3324684324944},"113":{"x":916.455318727647,"y":220.90882652619246},"114":{"x":564.9949590994031,"y":224.54044889591077},"116":{"x":1195.612292042225,"y":228.0732869394473},"117":{"x":186.34624221898628,"y":225.09470045417606},"118":{"x":2.162575231935051,"y":227.79561664404724},"119":{"x":509.69671268929164,"y":226.78346403098794},"120":{"x":224.6607374895325,"y":224.32525359195105},"121":{"x":856.7573107496587,"y":220.154308484966},"122":{"x":140.90001938807922,"y":224.2806651348709},"123":{"x":1078.9793578833169,"y":222.62146219118296},"124":{"x":98.05544990656597,"y":225.01550221312863},"125":{"x":49.863875058267354,"y":227.38734494693028},"126":{"x":454.08349249433826,"y":228.25431797274945},"127":{"x":268.1137708989056,"y":222.25151288894756},"128":{"x":740.3952651835474,"y":223.2924341114691},"129":{"x":972.2371945861883,"y":220.09119409942372},"130":{"x":406.1311459179843,"y":227.55831067953153},"131":{"x":309.80146606879885,"y":223.68639988119645},"132":{"x":683.6194450059195,"y":223.91754703671774},"133":{"x":801.1533597066212,"y":222.72593506231},"134":{"x":617.6553129524744,"y":225.95272608769187},"362":{"x":915.0070044592583,"y":11.060573309627614},"363":{"x":564.6118547791615,"y":9.324568821493529},"380":{"x":1200.6757281873797,"y":-1.4431619894644427},"381":{"x":1151.6275714986987,"y":-0.002693705474456465},"382":{"x":1254.642570446792,"y":-1.0440150649500595},"383":{"x":0.11603971668654367,"y":15.510933639142479},"384":{"x":-76.36233432473796,"y":17.886163099122598},"385":{"x":75.48321281098274,"y":15.629436054402106},"386":{"x":144.5754835675716,"y":14},"387":{"x":1036.0447287112702,"y":0.5539132981597845},"388":{"x":1104.9388739238584,"y":0.6869155216012075},"389":{"x":267.3739382964066,"y":12.554540316891973},"390":{"x":737.3954054377375,"y":7.007825358782611},"391":{"x":406.7485159869151,"y":10.577055239525293},"618":{"x":1200.1686309128486,"y":-183},"619":{"x":1153.2356229142347,"y":-180.94739642846832},"620":{"x":1258.5623863012906,"y":-182.19348478035784},"621":{"x":-0.3241645594162037,"y":-161.4108787750034},"622":{"x":1038.3241645594162,"y":-182.05755371941737}}
         for id in id2pos:
-            graph.nodes[int(id)]['x'] = id2pos[id]['x'] #* 2
-            graph.nodes[int(id)]['y'] = id2pos[id]['y'] #* 2
+            graph.nodes[int(id)]['x'] = id2pos[id]['x'] / 4
+            graph.nodes[int(id)]['y'] = id2pos[id]['y'] / 4
         return graph
 
     prefix = './data/price/'
@@ -771,6 +770,9 @@ def main_for_price():
         target = nx.Graph(G.subgraph(target_nodes[i]))
         target_G = Graph(target)
         target_Gs.append(target_G)
+
+    R, t = aligning(source_G, deformed_source_G, np.array([[source_G.id2index[id], source_G.id2index[id]] for id in ['3', '118']]))
+    deformed_source_G.nodes = deformed_source_G.nodes.dot(R.T) + t
 
     main(prefix, G, source_G, deformed_source_G, target_Gs, markers)
 
