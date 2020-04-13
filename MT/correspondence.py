@@ -288,7 +288,7 @@ def build_correspondence_v3(source_G, target_G, correspondence, rate=2):
 #
 #     return np.array(res)
 
-def build_correspondence_v4(source_G, target_G, correspondence, step=1, w_1=1, w_2=100, w_3=10):
+def build_correspondence_v4(source_G, target_G, correspondence, step=1, w_1=10, w_2=0, w_3=1):
     if correspondence.shape[0] >= np.min([source_G.nodes.shape[0], target_G.nodes.shape[0]]):
         return correspondence
     target = target_G.copy().to_networkx()
