@@ -41,7 +41,8 @@
         // let path = './road-chesapeake/'
         // let path = './VIS/';
         // let path = './email/';
-        let path = './price/';
+        // let path = './price/';
+        let path = './visbrazil/'
         // let path = './synthetic/';
 
         // ["asgGa",
@@ -57,7 +58,7 @@
         //     addGraph('result/' + name, 50 + i * 300, 50, 200, 200)
         // });
 
-        // addGraph('graph-with-pos', 50, 50, 1800, 1800)
+        addGraph('graph-with-pos', 50, 50, 800, 800)
         addGraph('result/pos', 50, 50, 800, 800)
         addGraph('result/new', 50, 1000, 800, 800)
 
@@ -110,22 +111,10 @@
                         x: d3.min(graph.nodes, node => node.x),
                         y: d3.min(graph.nodes, node => node.y)
                     }
-                // let scale = {
-                //     x: d3.scaleLinear().domain([min.x, max.x]).range([0, width]),
-                //     y: d3.scaleLinear().domain([min.y, max.y]).range([0, height])
-                // }
                 let scale = Math.min(width / (max.x - min.x), height / (max.y - min.y))
-                // let scale = {
-                //     x: d3.scaleLinear().domain([Math.min(min.x, min.y), Math.max(max.x, max.y)]).range([0,
-                //         width
-                //     ]),
-                //     y: d3.scaleLinear().domain([Math.min(min.x, min.y), Math.max(max.x, max.y)]).range([0,
-                //         height
-                //     ])
-                // }
                 graph.nodes.forEach(node => {
-                    node.px = node.x = scale * (node.x - min.x)
-                    node.py = node.y = scale * (node.y - min.y)
+                    node.x = scale * (node.x - min.x)
+                    node.y = scale * (node.y - min.y)
                 })
                 graph.links = graph.links.map(link => {
                     return {
@@ -151,6 +140,9 @@
                     .attr("y2", function (d) {
                         return d.target.y;
                     })
+                    .attr('class', function (d) {
+                        return `link${d.source.id} link${d.target.id}`
+                    })
                     .attr("stroke", d => {
                         if ('color' in d.source && 'color' in d.target) {
                             return colourBlend(d.source['color'].concat(d.target['color']))
@@ -158,7 +150,7 @@
                             return "#cacaca"
                         }
                     })
-                    .attr("stroke-width", "0.5")
+                    .attr("stroke-width", "0.2")
                     .attr('source', d => d.source.id)
                     .attr('target', d => d.target.id)
 
@@ -168,7 +160,7 @@
                     .data(graph.nodes)
                     .enter()
                     .append("circle")
-                    .attr("r", "1.5")
+                    .attr("r", "1")
                     .attr('fill', d => {
                         if ('color' in d) {
                             return colourBlend(d['color'])
@@ -178,11 +170,15 @@
                     })
                     .attr('title', d => d.id)
                     .attr("cx", function (d) {
-                        return d.px;
+                        return d.x;
                     })
                     .attr("cy", function (d) {
-                        return d.py;
+                        return d.y;
                     })
+                    .call(d3.drag()
+                        .on("start", dragstarted)
+                        .on("drag", dragged)
+                        .on("end", dragended));
 
                 let text = g.append("g")
                     .attr("class", "titles")
@@ -196,9 +192,49 @@
                     .attr("y", function (d) {
                         return d.y + 1;
                     })
+                    .attr('id', d => `text${d.id}`)
                     .text(d => d.id)
                     .attr('font-size', '0px')
             });
+
+            function dragstarted(d) {
+                // d.fx = d.x;
+                // d.fy = d.y;
+            }
+
+            function dragged(d) {
+                d.x = d3.event.x
+                d.y = d3.event.y
+                d3.select(this)
+                    .attr("cx", d.x)
+                    .attr("cy", d.y);
+
+                g.select(`#text${d.id}`)
+                    .attr("x", function (d) {
+                        return d.x + 1;
+                    })
+                    .attr("y", function (d) {
+                        return d.y + 1;
+                    })
+                g.selectAll('.link' + d.id)
+                    .attr("x1", function (d) {
+                        return d.source.x;
+                    })
+                    .attr("y1", function (d) {
+                        return d.source.y;
+                    })
+                    .attr("x2", function (d) {
+                        return d.target.x;
+                    })
+                    .attr("y2", function (d) {
+                        return d.target.y;
+                    })
+            }
+
+            function dragended(d) {
+                // d.fx = null;
+                // d.fy = null;
+            }
         }
 
         const colourBlend = (colors) => {

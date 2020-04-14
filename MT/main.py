@@ -69,7 +69,7 @@ def modification_transfer(source_G, target_G, markers, intermediate_states=[], i
         # until no more correspondece are built
         marker_increasing = True
         while marker_increasing:
-            reg_target_G = non_rigid_registration(intermediate_state, target_G, markers, alpha=1, beta=10, gamma=1000, iter=1000)  # deformation
+            reg_target_G = non_rigid_registration(intermediate_state, target_G, markers, alpha=5, beta=5, gamma=1000, iter=1000)  # deformation
             new_markers = build_correspondence_v4(intermediate_state, reg_target_G, markers, step=1)  # matching
             # new_markers = build_correspondence_v1(intermediate_state, reg_target_G, markers, rate=2)  # matching
             #####
@@ -147,7 +147,7 @@ def main(prefix, G, source_G, deformed_source_G, target_Gs, markers):
         save_json_graph(inter_state, prefix + '/result/interpolation' + str(k) + '.json')
 
     save_json_graph(G, prefix + '/result/pos.json')
-    G0, G1 = merge(Graph(G), deformed_targets, iter=1000, alpha=0, beta=1, gamma=1000)
+    G0, G1 = merge(Graph(G), deformed_targets, iter=1000, alpha=1, beta=1, gamma=50000)
     save_json_graph(G0.to_networkx(), prefix + '/result/new.json')
     return G0.to_networkx()
 
@@ -747,6 +747,7 @@ def main_for_price():
         # [[3, 4], [118, 136]],
         # [[3, 12], [118, 211]],
         # [[3, 63], [118, 304]],
+
         [[3, 115]],
         [[3, 365]],
         [[3, 5]],
@@ -756,7 +757,7 @@ def main_for_price():
         [[3, 928]],
         [[3, 4]],
         [[3, 12]],
-        [[3, 63]]
+        [[3, 63], [118, 304]]
     ]
 
     source = nx.Graph(G.subgraph(source_nodes))

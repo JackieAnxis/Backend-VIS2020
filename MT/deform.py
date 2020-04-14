@@ -146,17 +146,14 @@ def deform_v2(G, target_pos, iter=1000, alpha=100, beta=5, gamma=200):
 
 def deform_v3(G, target_pos, iter=1000, alpha=100, beta=5, gamma=200):
     '''
-    combine minimize the distance and direction difference,
-    separate direction and distance from the direction protection.
+    Stree majorization, Intelligent Graph Layout Using Many Users’ Input
     distance: L_w
     :param G: Graph object
     :param target_pos: dict, index 2 ndarray
     :return:
     '''
-    def laplacian(A, D, w=0):
+    def laplacian(A, D, w=1):
         L = (A * w + 1 - np.eye((A.shape[0]))) / D
-        # L = A * w / (D + 0.00001)
-        # L = np.ones((A.shape[0], A.shape[1])) / D
         L = np.diag(np.sum(L, axis=0)) - L
         return L
 
@@ -166,28 +163,29 @@ def deform_v3(G, target_pos, iter=1000, alpha=100, beta=5, gamma=200):
     eps = 10 ** (-4)
 
     D = compute_distance_matrix(V, V) + eps
-    adj = G.compute_adjacent_matrix()
-    D2 = D ** 2
-    # L = laplacian(adj, D2)
+    adj = np.ones((G.nodes.shape[0], G.nodes.shape[0])) # G.compute_adjacent_matrix()
 
+    D2 = D**2
+    target_idxs = list(target_pos.keys())
+    W = D2[target_idxs] / np.max(D2)
+    adj[target_idxs] = 5 / W
+    adj[:, target_idxs] = 5 / W.T
 
-    V0 = V.copy()
     V = V.copy()
-    j = 0
     for index in target_pos:
         weight = target_pos[index][1] # weight
-        V[index] = target_pos[index][0]
-        j += 2
+        # V[index] = target_pos[index][0]
         for jndex in target_pos:
             if jndex != index:
-                adj[index, jndex] = (beta * weight * target_pos[jndex][1])
+                adj[index, jndex] = (gamma * weight * target_pos[jndex][1])
                 D[index, jndex] = np.sqrt(np.sum((target_pos[index][0] - target_pos[jndex][0]) ** 2))
             else:
                 D[index, jndex] = eps
 
+
     L = laplacian(adj, 1)
 
-    def stress(L, V, D0, alpha, beta):
+    def stress(L, V, D0):
         D = compute_distance_matrix(V, V)
         STRS = np.sum((D - D0)**2 * (-L))
         return STRS
@@ -196,7 +194,6 @@ def deform_v3(G, target_pos, iter=1000, alpha=100, beta=5, gamma=200):
     k = 0
     for k in range(iter):
         D_t = compute_distance_matrix(V, V) + eps
-        # Lwdv_t = laplacian(adj, D2 * D_t / D)
         Lwdv_t = laplacian(adj, (D_t / D))
 
         M = np.zeros((2 * n, 2 * n))
@@ -207,7 +204,7 @@ def deform_v3(G, target_pos, iter=1000, alpha=100, beta=5, gamma=200):
 
         X = sparse.linalg.lsqr(M, C, iter_lim=5000, atol=1e-8, btol=1e-8, conlim=1e7, show=False)[0]
         V_ = X.reshape((int(X.shape[0] / 2), 2))
-        strs_ = stress(L, V_, D, alpha, beta)
+        strs_ = stress(L, V_, D)
         if k > 0:
             if (strs - strs_) / strs < eps:
                 break
@@ -218,6 +215,73 @@ def deform_v3(G, target_pos, iter=1000, alpha=100, beta=5, gamma=200):
     # s1 = stress(L, V, D, alpha, beta)
     print("residual of iteration", k, strs_)
     return V
+
+def deform_v4(G, target_pos, iter=1000, alpha=100, beta=5, gamma=200):
+    '''
+
+    :param G: Graph object
+    :param target_pos: dict, index 2 ndarray
+    :return:
+    '''
+
+    V = G.nodes
+    n = V.shape[0]
+    N = np.arange(0, n)
+    eps = 10e-6
+
+    # D = compute_distance_matrix(V, V) + eps
+    adj = G.compute_adjacent_matrix()
+
+    w = 10
+    C1 = np.zeros((G.nodes.shape[0] * 2, 1))
+    for i in range(G.nodes.shape[0]):
+        sum = np.zeros((2))
+        for j in range(G.nodes.shape[0]):
+            if j != i:
+                if i in target_pos and j in target_pos:
+                    v = target_pos[i][0] - target_pos[j][0]
+                else:
+                    v = G.nodes[i] - G.nodes[j]
+                if i in target_pos:
+                    v *= w
+                if j in target_pos:
+                    v *= w
+
+                if adj[i, j]:
+                    sum += v * 2
+                else:
+                    sum += v
+
+        C1[i * 2:(i + 1) * 2] = sum[:, np.newaxis]
+
+    adj += 1
+    adj -= np.eye(n)
+    adj[list(target_pos.keys()), :] *= w
+    adj[:, list(target_pos.keys())] *= w
+
+    L = np.diag(np.sum(adj, axis=0)) - adj
+
+    M1 = np.zeros((G.nodes.shape[0] * 2, G.nodes.shape[0] * 2))
+    M1[np.ix_(np.arange(G.nodes.shape[0]) * 2, np.arange(G.nodes.shape[0]) * 2)] = L
+    M1[np.ix_(np.arange(G.nodes.shape[0]) * 2 + 1, np.arange(G.nodes.shape[0]) * 2 + 1)] = L
+
+    C2 = np.zeros((len(target_pos) * 2, 1))
+    M2 = np.zeros((len(target_pos) * 2, G.nodes.shape[0] * 2))
+    target_pos = [(k, v) for k, v in target_pos.items()]
+    for i in range(len(target_pos)):
+        index = target_pos[i][0]
+        pos = target_pos[i][1][0]
+        weight = target_pos[i][1][1]
+        M2[i * 2, index * 2] = 1
+        M2[i * 2 + 1, index * 2 + 1] = 1
+        C2[i * 2:(i + 1) * 2] = pos[:, np.newaxis]
+
+    M = np.vstack((M1, M2 * gamma))
+    C = np.vstack((C1, C2 * gamma))
+
+    X = sparse.linalg.lsqr(M, C, iter_lim=5000, atol=1e-8, btol=1e-8, conlim=1e7, show=False)[0]
+    V_ = X.reshape((int(X.shape[0] / 2), 2))
+    return V_
 
 
 def deform(G, target_pos, iter=100, alpha=20, beta=0, gamma=200):

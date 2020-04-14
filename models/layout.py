@@ -103,8 +103,8 @@ def FM3(tlpgraph):
 
     # set any input parameter value if needed
     # params['Edge Length Property'] = ...
-    # params['Node Size'] = ...
-    # params['Unit edge length'] = ...
+    # params['Node Size'] = 20
+    params['Unit edge length'] = 20
     # params['New initial placement'] = ...
     # params['Fixed iterations'] = ...
     # params['Threshold'] = ...
@@ -167,7 +167,7 @@ if __name__ == '__main__':
     # path = './bn-mouse-kasthuri/'
     # path = './bn-mouse_visual-cortex_2/'
     # path = './power-662-bus/'
-    path = './VIS/'
+    path = './visgrazil/'
     filename = path + "graph.edgelist"
     G = nx.read_edgelist(filename, nodetype=int, data=(('weight', float),))
 

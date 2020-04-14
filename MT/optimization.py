@@ -2,7 +2,7 @@ import numpy as np
 
 from MT.Graph import Graph
 from MT.correspondence import compute_distance_matrix
-from MT.deform import deform_v2, deform_v3
+from MT.deform import deform_v2, deform_v3, deform_v4
 from models.utils import load_json_graph, save_json_graph
 
 
@@ -41,36 +41,36 @@ def merge(G, subGs, iter=1000, alpha=1, beta=10, gamma=2000):
         G1.nodes[index] = target_pos[index][0]
 
     # V = deform_v2(G, target_pos, iter, alpha, beta, gamma)
-    # V = deform_v3(G, target_pos, iter, alpha, beta, gamma)
-    # G0.nodes = V
+    V = deform_v3(G, target_pos, iter, alpha, beta, gamma)
+    G0.nodes = V
 
-    D = compute_distance_matrix(G.nodes, G.nodes)
-    surroundings_index = np.nonzero(np.sum(D[list(target_pos.keys())] < np.array(list(target_r.values()))[:, np.newaxis], axis=0))[0]
-    surroundings_id = [G.index2id[index] for index in surroundings_index]
-    print(len(surroundings_id))
-    surroundings_G = Graph(G.to_networkx().subgraph(surroundings_id))
-
-    d = np.min(D[list(target_pos.keys())][:, list(filter(lambda i: i not in target_pos, surroundings_index))], axis=0)
-    min_d = np.min(d)
-    max_d = np.max(d)
-    new_target_pos = {}
-    for index in surroundings_index:
-        id = G.index2id[index]
-        if index in target_pos:
-            new_target_pos[surroundings_G.id2index[id]] = target_pos[index]
-        else:
-            dis = np.min(D[list(target_pos.keys()), index])
-            w = ((dis-min_d) / (max_d-min_d)) ** 6 / 100
-            new_target_pos[surroundings_G.id2index[id]] = [G.nodes[index], w]
-
+    # D = compute_distance_matrix(G.nodes, G.nodes)
+    # surroundings_index = np.nonzero(np.sum(D[list(target_pos.keys())] < np.array(list(target_r.values()))[:, np.newaxis], axis=0))[0]
+    # surroundings_id = [G.index2id[index] for index in surroundings_index]
+    # print(len(surroundings_id))
+    # surroundings_G = Graph(G.to_networkx().subgraph(surroundings_id))
+    #
+    # d = np.min(D[list(target_pos.keys())][:, list(filter(lambda i: i not in target_pos, surroundings_index))], axis=0)
+    # min_d = np.min(d)
+    # max_d = np.max(d)
+    # new_target_pos = {}
+    # for index in surroundings_index:
+    #     id = G.index2id[index]
+    #     if index in target_pos:
+    #         new_target_pos[surroundings_G.id2index[id]] = target_pos[index]
+    #     else:
+    #         dis = np.min(D[list(target_pos.keys()), index])
+    #         w = ((dis-min_d) / (max_d-min_d)) ** 6 / 100
+    #         new_target_pos[surroundings_G.id2index[id]] = [G.nodes[index], w]
+    #
     # V = deform_v3(surroundings_G, new_target_pos, iter, alpha, beta, gamma)
-    V = deform_v2(surroundings_G, new_target_pos, iter, alpha, beta, gamma)
-    # surroundings_G.nodes = V
-    # G0 = surroundings_G
-    for index in range(V.shape[0]):
-        id = surroundings_G.index2id[index]
-        G0_index = G0.id2index[id]
-        G0.nodes[G0_index] = V[index]
+    # # V = deform_v2(surroundings_G, new_target_pos, iter, alpha, beta, gamma)
+    # # surroundings_G.nodes = V
+    # # G0 = surroundings_G
+    # for index in range(V.shape[0]):
+    #     id = surroundings_G.index2id[index]
+    #     G0_index = G0.id2index[id]
+    #     G0.nodes[G0_index] = V[index]
     return G0, G1
 
 if __name__ == '__main__':
