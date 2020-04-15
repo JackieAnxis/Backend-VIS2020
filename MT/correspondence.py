@@ -3,6 +3,7 @@ import numpy as np
 import networkx as nx
 from hopcroftkarp import HopcroftKarp
 from MT.Hugarian import Hungarian
+from embeddings.regal.xnetmf import embed
 
 def maximum_matching(matrix):
     graph = {}
@@ -288,14 +289,14 @@ def build_correspondence_v3(source_G, target_G, correspondence, rate=2):
 #
 #     return np.array(res)
 
-def build_correspondence_v4(source_G, target_G, correspondence, step=1, w_1=100, w_2=10, w_3=1):
+def build_correspondence_v4(source_G, target_G, correspondence, step=1, w_1=0, w_2=0, w_3=1, w_4=1):
     if correspondence.shape[0] >= np.min([source_G.nodes.shape[0], target_G.nodes.shape[0]]):
         return correspondence
     target = target_G.copy().to_networkx()
     source = source_G.copy().to_networkx()
     distance_matrix = compute_distance_matrix(source_G.nodes, target_G.nodes)
-    source_gd_matrix = source_G.compute_graph_distance_matrix() # source graph distance matrix
-    target_gd_matrix = target_G.compute_graph_distance_matrix() # target graph distance matrix
+    source_graph_distance_matrix = source_G.compute_graph_distance_matrix() # source graph distance matrix
+    target_graph_distance_matrix = target_G.compute_graph_distance_matrix() # target graph distance matrix
     # source_dis_mat = compute_distance_matrix(source_G.nodes, source_G.nodes)
     # target_dis_mat = compute_distance_matrix(target_G.nodes, target_G.nodes)
 
@@ -307,37 +308,50 @@ def build_correspondence_v4(source_G, target_G, correspondence, step=1, w_1=100,
     #     source_built_idx[sidx] = True
     #     target_built_idx[tidx] = True
 
-    gd_cost_mat = -1 * np.ones(shape=(source_G.nodes.shape[0], target_G.nodes.shape[0]))
-    dg_cost_mat = -1 * np.ones(shape=(source_G.nodes.shape[0], target_G.nodes.shape[0]))
-    ed_cost_mat = -1 * np.ones(shape=(source_G.nodes.shape[0], target_G.nodes.shape[0]))
+    # mapping = {}
+    # i = 0
+    # for id in source_G.id2index:
+    #     mapping[id] = i
+    #     i += 1
+    # for id in target_G.id2index:
+    #     mapping[id] = i
+    #     i += 1
+    # embedding = embed(nx.relabel_nodes(nx.union(source, target), mapping))
+    # embedding_profit_mat = embedding.dot(embedding.T)[[mapping[id] for id in source_G.id2index], :][:, [mapping[id] for id in target_G.id2index]]
+
+    graph_distance_cost_mat = -1 * np.ones(shape=(source_G.nodes.shape[0], target_G.nodes.shape[0]))
+    degree_cost_mat = graph_distance_cost_mat.copy()
+    euclidean_distance_cost_mat = graph_distance_cost_mat.copy()
+
     for k in range(correspondence.shape[0]):
         sm_idx = correspondence[k, 0] # source marker' index
         tm_idx = correspondence[k, 1]  # target marker' index
-        sm_ngbr_idxs = np.nonzero((source_gd_matrix[sm_idx] <= step) * (source_gd_matrix[sm_idx] > 0))[0]
-        tm_ngbr_idxs = np.nonzero((target_gd_matrix[tm_idx] <= step) * (target_gd_matrix[tm_idx] > 0))[0]
+        sm_ngbr_idxs = np.nonzero((source_graph_distance_matrix[sm_idx] <= step) * (source_graph_distance_matrix[sm_idx] > 0))[0]
+        tm_ngbr_idxs = np.nonzero((target_graph_distance_matrix[tm_idx] <= step) * (target_graph_distance_matrix[tm_idx] > 0))[0]
         for i in sm_ngbr_idxs:
-            sgd = source_gd_matrix[i][sm_idx] # node i to marker's distance
+            sgd = source_graph_distance_matrix[i][sm_idx] # node i to marker's distance
             sdg = source.degree[source_G.index2id[i]] # node i's degree
             for j in tm_ngbr_idxs:
-                tgd = target_gd_matrix[j][tm_idx]  # node j to marker's distance
+                tgd = target_graph_distance_matrix[j][tm_idx]  # node j to marker's distance
                 tdg = target.degree[target_G.index2id[j]]  # node j's degree
-                gd_cost = np.abs(sgd - tgd)
-                dg_cost = np.abs(sdg - tdg) / np.max([sdg, tdg])
-                ed_cost = distance_matrix[i, j]  # euclidean degree cost
-                dg_cost_mat[i, j] = dg_cost
-                ed_cost_mat[i, j] = ed_cost
-                if gd_cost_mat[i, j] < 0 or gd_cost_mat[i, j] > gd_cost:
-                    gd_cost_mat[i, j] = gd_cost
+                graph_distance_cost = np.abs(sgd - tgd)
+                degree_cost = np.abs(sdg - tdg) / np.max([sdg, tdg])
+                euclidean_distance_cost = distance_matrix[i, j]  # euclidean degree cost
+                degree_cost_mat[i, j] = degree_cost
+                euclidean_distance_cost_mat[i, j] = euclidean_distance_cost
+                if graph_distance_cost_mat[i, j] < 0 or graph_distance_cost_mat[i, j] > graph_distance_cost:
+                    graph_distance_cost_mat[i, j] = graph_distance_cost
 
 
     eps = 10e-6
-    gd_profit_mat = 1 - (gd_cost_mat + eps) / (np.max(gd_cost_mat) + eps)
-    gd_profit_mat[gd_cost_mat == -1] = -1
-    dg_profit_mat = 1 - dg_cost_mat # 1 - (dg_cost_mat + eps) / (np.max(dg_cost_mat) + eps)
-    dg_profit_mat[dg_cost_mat == -1] = -1
-    ed_profit_mat = 1 - (ed_cost_mat + eps) / (np.max(ed_cost_mat) + eps)
-    ed_profit_mat[ed_cost_mat == -1] = -1
-    profit_matrix = gd_profit_mat * w_1 + dg_profit_mat * w_2 + ed_profit_mat * w_3
+    graph_distance_profit_mat = 1 - (graph_distance_cost_mat + eps) / (np.max(graph_distance_cost_mat) + eps)
+    graph_distance_profit_mat[graph_distance_cost_mat == -1] = -1
+    degree_profit_mat = 1 - degree_cost_mat # 1 - (degree_cost_mat + eps) / (np.max(degree_cost_mat) + eps)
+    degree_profit_mat[degree_cost_mat == -1] = -1
+    # euclidean_distance_profit_mat = 1 - (euclidean_distance_cost_mat + eps) / (np.max(euclidean_distance_cost_mat) + eps)
+    euclidean_distance_profit_mat = np.max(euclidean_distance_cost_mat) - euclidean_distance_cost_mat
+    euclidean_distance_profit_mat[euclidean_distance_cost_mat == -1] = -1
+    profit_matrix = graph_distance_profit_mat * w_1 + degree_profit_mat * w_2 + euclidean_distance_profit_mat * w_3 # + embedding_profit_mat * w_4
 
     sm_idxs = correspondence[:, 0].flatten() # source markers' index
     tm_idxs = correspondence[:, 1].flatten() # target markers' index
@@ -350,11 +364,11 @@ def build_correspondence_v4(source_G, target_G, correspondence, step=1, w_1=100,
     non_sm_idxs = np.nonzero(non_sm)[0]
     non_tm_idxs = np.nonzero(non_tm)[0]
 
-    _gd_profit_mat = gd_profit_mat[non_sm_idxs, :][:, non_tm_idxs]
+    _graph_distance_profit_mat = graph_distance_profit_mat[non_sm_idxs, :][:, non_tm_idxs]
     source_in_step = np.zeros(shape=(source_G.nodes.shape[0]))
-    source_in_step[non_sm_idxs] = np.max(_gd_profit_mat, axis=1) > -1
+    source_in_step[non_sm_idxs] = np.max(_graph_distance_profit_mat, axis=1) > -1
     target_in_step = np.zeros(shape=(target_G.nodes.shape[0]))
-    target_in_step[non_tm_idxs] = np.max(_gd_profit_mat, axis=0) > -1
+    target_in_step[non_tm_idxs] = np.max(_graph_distance_profit_mat, axis=0) > -1
 
     source_mapping = np.nonzero(source_in_step * non_sm)[0]
     target_mapping = np.nonzero(target_in_step * non_tm)[0]

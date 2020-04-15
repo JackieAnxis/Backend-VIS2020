@@ -23,29 +23,43 @@ def cal_radius(G):
 def merge(G, subGs, iter=1000, alpha=1, beta=10, gamma=2000):
     target_pos = {}
     target_r = {}
+
     for subG in subGs:
-        r = cal_radius(subG)
+        center = np.mean(subG.nodes, axis=0)
+        R = np.sqrt(np.sum((subG.nodes - center) ** 2, axis=1))
         for id in subG.id2index:
             index = G.id2index[id]
             if index not in target_pos:
                 target_r[index] = []
                 target_pos[index] = []
-            target_r[index].append(r)
+            target_r[index].append(R[subG.id2index[id]])
             target_pos[index].append(subG.nodes[subG.id2index[id]])
+        # r = cal_radius(subG)
+        # for id in subG.id2index:
+        #     index = G.id2index[id]
+        #     if index not in target_pos:
+        #         target_r[index] = []
+        #         target_pos[index] = []
+        #     target_r[index].append(r)
+        #     target_pos[index].append(subG.nodes[subG.id2index[id]])
 
     G0 = G.copy()
+
+    # V = deform_v2(G, target_pos, iter, alpha, beta, gamma)
+    # V = deform_v3(G, target_pos, iter, alpha, beta, gamma)
+    # G0.nodes = V
+
     G1 = G.copy()
     for index in target_pos:
-        target_r[index] = np.mean(target_r[index])
+        target_r[index] = np.max(target_r[index])
         target_pos[index] = [np.mean(target_pos[index], axis=0), 1]
         G1.nodes[index] = target_pos[index][0]
 
-    # V = deform_v2(G, target_pos, iter, alpha, beta, gamma)
-    V = deform_v3(G, target_pos, iter, alpha, beta, gamma)
-    G0.nodes = V
+    return G1, G1
 
-    # D = compute_distance_matrix(G.nodes, G.nodes)
-    # surroundings_index = np.nonzero(np.sum(D[list(target_pos.keys())] < np.array(list(target_r.values()))[:, np.newaxis], axis=0))[0]
+    # print('begin to compute distance matrix...')
+    # D = compute_distance_matrix(G1.nodes, G1.nodes)
+    # surroundings_index = np.nonzero(np.sum(D[list(target_pos.keys())] < np.array(list(target_r.values()))[:, np.newaxis] / 2, axis=0))[0]
     # surroundings_id = [G.index2id[index] for index in surroundings_index]
     # print(len(surroundings_id))
     # surroundings_G = Graph(G.to_networkx().subgraph(surroundings_id))
@@ -63,15 +77,15 @@ def merge(G, subGs, iter=1000, alpha=1, beta=10, gamma=2000):
     #         w = ((dis-min_d) / (max_d-min_d)) ** 6 / 100
     #         new_target_pos[surroundings_G.id2index[id]] = [G.nodes[index], w]
     #
-    # V = deform_v3(surroundings_G, new_target_pos, iter, alpha, beta, gamma)
-    # # V = deform_v2(surroundings_G, new_target_pos, iter, alpha, beta, gamma)
+    # # V = deform_v4(surroundings_G, new_target_pos, iter, alpha, beta, gamma)
+    # V = deform_v2(surroundings_G, new_target_pos, iter, alpha=100, beta=1, gamma=1000)
     # # surroundings_G.nodes = V
     # # G0 = surroundings_G
     # for index in range(V.shape[0]):
     #     id = surroundings_G.index2id[index]
     #     G0_index = G0.id2index[id]
     #     G0.nodes[G0_index] = V[index]
-    return G0, G1
+    # return G0, G1
 
 if __name__ == '__main__':
     def modify(source_G, source_nodes):

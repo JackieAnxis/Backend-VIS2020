@@ -6,27 +6,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Document</title>
-    <!-- <style>
-        circle {
+    <style>
+        /* circle {
             r: 1;
-            /* fill: royalblue; */
-        }
-
+            fill: royalblue;
+        }*/
+        /* 
         text {
-            font-size: 0px;
-        }
+            color: white;
+        } */
 
-        line {
+        /* line {
             stroke: rgb(211, 203, 183);
             stroke-width: 1;
-        }
-    </style> -->
+        } */
+    </style>
 </head>
 
 <body>
-    <button
+    <!-- <button
         style="width: 40px; height: 15px; border-radius: 3px; font-size: 10px; position: fixed; top: 20px; left: 20px;"
-        id="toggleText">TEXT</button>
+        id="toggleText">TEXT</button> -->
     <svg id="container" width="3500" height="2000">
     </svg>
     <script src="./d3.v4.min.js"></script>
@@ -42,8 +42,9 @@
         // let path = './VIS/';
         // let path = './email/';
         // let path = './price/';
-        let path = './visbrazil/'
+        // let path = './visbrazil/'
         // let path = './synthetic/';
+        let path = './finan512/';
 
         // ["asgGa",
         //     "asgPm",
@@ -58,12 +59,12 @@
         //     addGraph('result/' + name, 50 + i * 300, 50, 200, 200)
         // });
 
-        addGraph('graph-with-pos', 50, 50, 800, 800)
+        // addGraph('graph-with-pos', 50, 50, 800, 800)
         addGraph('result/pos', 50, 50, 800, 800)
         addGraph('result/new', 50, 1000, 800, 800)
 
-        let n = 10 // target count
-        let m = 1 // interpolation count
+        let n = 15 // target count
+        let m = 2 // interpolation count
         for (let j = 0; j <= m; j++) {
             addGraph('result/interpolation' + j, 1000, 350 + j * 150, 100, 100)
         }
@@ -78,14 +79,23 @@
         }
 
         let flag = false
+        window.onkeypress = function (e) {
+            if (e.charCode == 116) { // T
+                toggleText()
+            }
+        }
         d3.select('#toggleText').on('click', function () {
+            toggleText()
+        })
+
+        function toggleText() {
             flag = !flag
             let font = 'font-size: 0'
             if (flag) {
                 font = 'font-size: 3px'
             }
             d3.selectAll('text').attr('style', font)
-        })
+        }
 
         ids = [];
         d3.select('#subgraph').selectAll('circle').each(d => ids.push(d.id));

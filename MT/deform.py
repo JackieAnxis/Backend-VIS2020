@@ -5,6 +5,8 @@ from MT.Graph import Graph
 from scipy import sparse
 from MT.correspondence import compute_distance_matrix
 
+
+
 def aligning(source_G, target_G, markers):
     # R = [[ s, h, x]
     #      [-h, s, y]
@@ -17,8 +19,8 @@ def aligning(source_G, target_G, markers):
     M = np.zeros((markers.shape[0] * 2, k))
     C = np.zeros((markers.shape[0] * 2, 1))
 
-    source_marker_nodes = source_G.nodes[markers[:, 0], :]
-    target_marker_nodes = target_G.nodes[markers[:, 1], :]
+    source_marker_nodes = source_G.nodes[markers[:, 0], :].copy()
+    target_marker_nodes = target_G.nodes[markers[:, 1], :].copy()
     for i in range(0, markers.shape[0]):
         x = target_marker_nodes[i][0]
         y = target_marker_nodes[i][1]
@@ -174,7 +176,7 @@ def deform_v3(G, target_pos, iter=1000, alpha=100, beta=5, gamma=200):
     V = V.copy()
     for index in target_pos:
         weight = target_pos[index][1] # weight
-        # V[index] = target_pos[index][0]
+        V[index] = target_pos[index][0]
         for jndex in target_pos:
             if jndex != index:
                 adj[index, jndex] = (gamma * weight * target_pos[jndex][1])
@@ -210,9 +212,7 @@ def deform_v3(G, target_pos, iter=1000, alpha=100, beta=5, gamma=200):
                 break
         strs = strs_
         V = V_
-    # T = np.array([[0, 0], [np.sqrt(3/20)+1, 1/2-np.sqrt(3 / 5)], [2, 1], [3 - np.sqrt(3/20), 1/2-np.sqrt(3 / 5)], [4, 0]])
-    # s0 = stress(L, T, D, alpha, beta)
-    # s1 = stress(L, V, D, alpha, beta)
+
     print("residual of iteration", k, strs_)
     return V
 
@@ -230,40 +230,43 @@ def deform_v4(G, target_pos, iter=1000, alpha=100, beta=5, gamma=200):
     eps = 10e-6
 
     # D = compute_distance_matrix(V, V) + eps
-    adj = G.compute_adjacent_matrix()
+    # adj = G.compute_adjacent_matrix()
 
     w = 10
-    C1 = np.zeros((G.nodes.shape[0] * 2, 1))
-    for i in range(G.nodes.shape[0]):
-        sum = np.zeros((2))
-        for j in range(G.nodes.shape[0]):
-            if j != i:
-                if i in target_pos and j in target_pos:
-                    v = target_pos[i][0] - target_pos[j][0]
-                else:
-                    v = G.nodes[i] - G.nodes[j]
-                if i in target_pos:
-                    v *= w
-                if j in target_pos:
-                    v *= w
+    C1 = np.zeros((2 * n * (n - 1), 1))
+    M1 = np.zeros((2 * n * (n - 1), 2 * n))
+    offset = 0
+    for i in range(n):
+        for j in range(i + 1, n):
+            M1[offset, i * 2] = 1
+            M1[offset, j * 2] = -1
+            M1[offset + 1, i * 2 + 1] = 1
+            M1[offset + 1, j * 2 + 1] = -1
+            if i in target_pos and j in target_pos:
+                v = target_pos[i][0] - target_pos[j][0]
+            else:
+                v = G.nodes[i] - G.nodes[j]
+            C1[offset] = v[0]
+            C1[offset + 1] = v[1]
+            if i in target_pos:
+                C1[offset] *= w
+                M1[offset] *= w
+                C1[offset + 1] *= w
+                M1[offset + 1] *= w
+            if j in target_pos:
+                C1[offset] *= w
+                M1[offset] *= w
+                C1[offset + 1] *= w
+                M1[offset + 1] *= w
 
-                if adj[i, j]:
-                    sum += v * 2
-                else:
-                    sum += v
+            C1[offset] /= np.mean(np.sum(v**2))
+            M1[offset] /= np.mean(np.sum(v**2))
+            C1[offset + 1] /= np.mean(np.sum(v**2))
+            M1[offset + 1] /= np.mean(np.sum(v**2))
 
-        C1[i * 2:(i + 1) * 2] = sum[:, np.newaxis]
 
-    adj += 1
-    adj -= np.eye(n)
-    adj[list(target_pos.keys()), :] *= w
-    adj[:, list(target_pos.keys())] *= w
 
-    L = np.diag(np.sum(adj, axis=0)) - adj
-
-    M1 = np.zeros((G.nodes.shape[0] * 2, G.nodes.shape[0] * 2))
-    M1[np.ix_(np.arange(G.nodes.shape[0]) * 2, np.arange(G.nodes.shape[0]) * 2)] = L
-    M1[np.ix_(np.arange(G.nodes.shape[0]) * 2 + 1, np.arange(G.nodes.shape[0]) * 2 + 1)] = L
+            offset += 2
 
     C2 = np.zeros((len(target_pos) * 2, 1))
     M2 = np.zeros((len(target_pos) * 2, G.nodes.shape[0] * 2))
@@ -278,6 +281,8 @@ def deform_v4(G, target_pos, iter=1000, alpha=100, beta=5, gamma=200):
 
     M = np.vstack((M1, M2 * gamma))
     C = np.vstack((C1, C2 * gamma))
+    # M = M1
+    # C = C1
 
     X = sparse.linalg.lsqr(M, C, iter_lim=5000, atol=1e-8, btol=1e-8, conlim=1e7, show=False)[0]
     V_ = X.reshape((int(X.shape[0] / 2), 2))

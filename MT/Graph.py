@@ -54,7 +54,7 @@ class Graph():
         self.graph_distance_matrix = np.zeros((0, 0))
     
     def copy(self):
-        new_G = Graph(self.rawgraph)
+        new_G = Graph(self.to_networkx())
         new_G.graph_distance_matrix = self.graph_distance_matrix.copy()
         return new_G
 

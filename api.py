@@ -24,7 +24,8 @@ def hello_world():
 
 @app.route('/whole-graph')
 def whole_graph():
-    name = 'price'
+    # name = 'price'
+    name='finan512'
     # name = 'VIS'
     # name = 'power-662-bus'
     # name = 'bn-mouse-kasthuri'

@@ -1,6 +1,7 @@
 from tulip import tlp
 import json
 from networkx.readwrite import json_graph
+import numpy as np
 import networkx as nx
 
 def connected_component_subgraphs(G):
@@ -49,10 +50,7 @@ def overlap_removal(graph, layout):
 def SM(tlpgraph):
     params = tlp.getDefaultPluginParameters('Stress Majorization (OGDF)', tlpgraph)
     resultLayout = tlpgraph.getLayoutProperty('resultLayout')
-    success = tlpgraph.applyLayoutAlgorithm('FM^3 (OGDF)', resultLayout, params)
-
-    # or store the result of the algorithm in the default Tulip layout property named 'viewLayout'
-    # success = graph.applyLayoutAlgorithm('FM^3 (OGDF)', params)
+    success = tlpgraph.applyLayoutAlgorithm('Stress Majorization (OGDF)', resultLayout, params)
     return resultLayout
 
 def tree(tlpgraph):
@@ -96,6 +94,18 @@ def MMM(tlpgraph):
     # success = tlpgraph.applyLayoutAlgorithm('LinLog', resultLayout, params)
     return resultLayout
 
+def random(tlpgraph):
+    # get a dictionnary filled with the default plugin parameters values
+    # graph is an instance of the tlp.Graph class
+    params = tlp.getDefaultPluginParameters('Random layout', tlpgraph)
+    # set any input parameter value if needed
+    # params['3D layout'] = ...
+
+    # either create or get a layout property from the graph to store the result of the algorithm
+    resultLayout = tlpgraph.getLayoutProperty('resultLayout')
+    success = tlpgraph.applyLayoutAlgorithm('Random layout', resultLayout, params)
+    return resultLayout
+
 def FM3(tlpgraph):
     # get a dictionnary filled with the default plugin parameters values
     # graph is an instance of the tlp.Graph class
@@ -104,8 +114,8 @@ def FM3(tlpgraph):
     # set any input parameter value if needed
     # params['Edge Length Property'] = ...
     # params['Node Size'] = 20
-    params['Unit edge length'] = 20
-    # params['New initial placement'] = ...
+    params['Unit edge length'] = 100
+    params['New initial placement'] = False # ...
     # params['Fixed iterations'] = ...
     # params['Threshold'] = ...
     # params['Page Format'] = ...
@@ -134,9 +144,51 @@ def FM3(tlpgraph):
 def layout(G):
     graph, nodes_map = nx2tlp(G)
     resultLayout = FM3(graph)
-    # resultLayout = SM(graph)
     # resultLayout = MMM(graph)
     resultLayout = overlap_removal(graph, resultLayout)
+    for n in G.nodes:
+        pos = resultLayout[nodes_map[n]]
+        G.nodes[n]['x'] = pos[0]
+        G.nodes[n]['y'] = pos[1]
+    return G
+
+def SM_layout(G):
+    graph, nodes_map = nx2tlp(G)
+    resultLayout = SM(graph)
+    # resultLayout = MMM(graph)
+    resultLayout = overlap_removal(graph, resultLayout)
+    for n in G.nodes:
+        pos = resultLayout[nodes_map[n]]
+        G.nodes[n]['x'] = pos[0]
+        G.nodes[n]['y'] = pos[1]
+    return G
+
+def MMM_layout(G):
+    graph, nodes_map = nx2tlp(G)
+    # resultLayout = FM3(graph)
+    # resultLayout = SM(graph)
+    resultLayout = MMM(graph)
+    resultLayout = overlap_removal(graph, resultLayout)
+    for n in G.nodes:
+        pos = resultLayout[nodes_map[n]]
+        G.nodes[n]['x'] = pos[0]
+        G.nodes[n]['y'] = pos[1]
+    return G
+
+def GEM_layout(G):
+    tlpgraph, nodes_map = nx2tlp(G)
+    randomlayout = random(tlpgraph)
+    for node in G.nodes:
+        if 'x' not in G.nodes[node]:
+            break
+        randomlayout[nodes_map[node]] = tlp.Vec3f(G.nodes[node]['x'], G.nodes[node]['y'], 0)
+    initlayout = randomlayout
+
+    params = tlp.getDefaultPluginParameters('GEM (Frick)', tlpgraph)
+    params['initial layout'] = initlayout
+    resultLayout = tlpgraph.getLayoutProperty('resultLayout')
+    success = tlpgraph.applyLayoutAlgorithm('GEM (Frick)', resultLayout, params)
+    resultLayout = overlap_removal(tlpgraph, resultLayout)
     for n in G.nodes:
         pos = resultLayout[nodes_map[n]]
         G.nodes[n]['x'] = pos[0]
@@ -161,6 +213,18 @@ def radial_tree_layout(G):
         pos = resultLayout[nodes_map[n]]
         G.nodes[n]['x'] = pos[0]
         G.nodes[n]['y'] = pos[1]
+    return G
+
+def nx_spring_layout(G):
+    G = G.copy()
+    initlayout = {}
+    for node in G.nodes:
+        initlayout[node] = np.array([G.nodes[node]['x'], G.nodes[node]['y']])
+    layouted = nx.spring_layout(G, pos=initlayout, iterations=200)
+    for node in G.nodes:
+        [x, y] = layouted[node]
+        G.nodes[node]['x'] = x
+        G.nodes[node]['y'] = y
     return G
 
 if __name__ == '__main__':
