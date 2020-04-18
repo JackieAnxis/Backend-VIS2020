@@ -26,7 +26,7 @@ def scale(G0, G1):
     raw_min = np.min(G0.nodes, axis=0)
     max = np.max(V, axis=0)
     min = np.min(V, axis=0)
-    scale = np.min((raw_max - raw_min) / (max - min))
+    scale = np.mean((raw_max - raw_min) / (max - min)) * 0.8
     V -= min
     V *= scale
     V += raw_min
@@ -78,6 +78,7 @@ def modification_transfer(source_G, target_G, markers, intermediate_states=[], i
     align_target_G.nodes = target_G.nodes.dot(R0.T) + t0
     distance_matrix = compute_distance_matrix(align_target_G.nodes, intermediate_states[0].nodes)
     min_dis_sum = np.sum(np.min(distance_matrix, axis=1))
+    flip_axis = -1
     for i in range(2):
         _target_G = target_G.copy()
         _target_G.nodes[:, i] = np.mean(_target_G.nodes[:, i]) - (_target_G.nodes[:, i] - np.mean(_target_G.nodes[:, i]))
@@ -87,6 +88,7 @@ def modification_transfer(source_G, target_G, markers, intermediate_states=[], i
         distance_matrix = compute_distance_matrix(_align_target_G.nodes, intermediate_states[0].nodes)
         _min_dis_sum = np.sum(np.min(distance_matrix, axis=1))
         if _min_dis_sum < min_dis_sum:
+            flip_axis = i
             min_dis_sum = _min_dis_sum
             align_target_G = _align_target_G
             R0 = R
@@ -105,8 +107,8 @@ def modification_transfer(source_G, target_G, markers, intermediate_states=[], i
         marker_increasing = True
         while marker_increasing:
             reg_target_G = non_rigid_registration(intermediate_state, target_G, markers, alpha=5, beta=5, gamma=1000, iter=1000)  # deformation
-            # new_markers = build_correspondence_v4(intermediate_state, reg_target_G, markers, step=1)  # matching
-            new_markers = build_correspondence_v1(intermediate_state, reg_target_G, markers, rate=2)  # matching
+            new_markers = build_correspondence_v4(intermediate_state, reg_target_G, markers, step=1)  # matching
+            # new_markers = build_correspondence_v1(intermediate_state, reg_target_G, markers, rate=2)  # matching
             #####
             _markers = new_markers.copy()
             _markers[:, 0] = np.array([source_G.index2id[marker] for marker in _markers[:, 0]])
@@ -123,10 +125,14 @@ def modification_transfer(source_G, target_G, markers, intermediate_states=[], i
         deformation_target_G.nodes = target_G.nodes
         deformation_target_Gs.append(deformation_target_G)
 
+
     R1, t1 = aligning(raw_target_G, deformation_target_Gs[1], np.array([[index, index] for index in target_G.index2id]))
     target_G.nodes = target_G.nodes.dot(R1.T) + t1
 
     target_G.nodes = scale(raw_target_G, target_G)
+    # if flip_axis >= 0:
+    #     target_G.nodes[:, flip_axis] = np.mean(target_G.nodes[:, flip_axis]) - (
+    #         target_G.nodes[:, flip_axis] - np.mean(target_G.nodes[:, flip_axis]))
 
     # R, t = aligning(raw_target_G, target_G, np.array([[index, index] for index in target_G.index2id]))
     # target_G.nodes = target_G.nodes.dot(R.T) + t
@@ -175,7 +181,7 @@ def main(prefix, G, source_G, deformed_source_G, target_Gs, markers):
         inter_deformaed_target_Gs = result[1]['deformations']
         for k in range(len(inter_deformaed_target_Gs)):
             _inter_deformaed_target = inter_deformaed_target_Gs[k].to_networkx()
-            inter_deformaed_target = _inter_deformaed_target # nx.union(_inter_deformaed_target, intermediate_states[k].to_networkx())
+            inter_deformaed_target = nx.union(_inter_deformaed_target, intermediate_states[k].to_networkx()) # _inter_deformaed_target
             for node in _inter_deformaed_target.nodes:
                 inter_deformaed_target.nodes[node]['color'] = ['#436dba']
             save_json_graph(inter_deformaed_target, prefix + '/result/deformed_target' + str(i) + '_' + str(k) + '.json')
@@ -188,8 +194,9 @@ def main(prefix, G, source_G, deformed_source_G, target_Gs, markers):
         save_json_graph(inter_state, prefix + '/result/interpolation' + str(k) + '.json')
 
     save_json_graph(G, prefix + '/result/pos.json')
-    G0, G1 = merge(Graph(G), deformed_targets, iter=1000, alpha=1, beta=10, gamma=50000)
+    G0, G1 = merge(Graph(G), deformed_targets, iter=1000, alpha=0, beta=1, gamma=1000)
     save_json_graph(G0.to_networkx(), prefix + '/result/new.json')
+    save_json_graph(G1.to_networkx(), prefix + '/result/_new.json')
     return G0.to_networkx()
 
 def main_for_power():
@@ -771,17 +778,17 @@ def main_for_price():
         [5,146,147,148,149,150,151,152,153,154,155,156,157,158,159,160,161,418,419,420,421,422,423,424,677,678],
         [111,354,355,356,357,358,359,360,361,597,598,599,600,601,602,757],
         # [2,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,351,352,353,595,596],
-        [145,406,407,408,409,410,411,412,413,414,415,416,417,667,668,669,670,671,672,673,674,675,676,833,834,835,836,980],
-        [928,966,967,968,969,970,971,972,973,974,975,976,977,978,979,990,991,992,997],
-        [4,136,137,138,139,140,141,142,143,144,399,400,401,402,403,404,405,665,666],
-        [12,207,210,211,212,213,214,215,216,217,218,219,220,481,482,483,484,485,486,487,488,489,707,708,709,710,711,846,847,848,995],
-        [63,303,304,305,306,307,308,309,310,311,312,313,314,315,561,562,563,564,565,566,567,568,569,570,571,572,751,752,753,868,869],
+        # [145,406,407,408,409,410,411,412,413,414,415,416,417,667,668,669,670,671,672,673,674,675,676,833,834,835,836,980],
+        # [928,966,967,968,969,970,971,972,973,974,975,976,977,978,979,990,991,992,997],
+        # [4,136,137,138,139,140,141,142,143,144,399,400,401,402,403,404,405,665,666],
+        # [12,207,210,211,212,213,214,215,216,217,218,219,220,481,482,483,484,485,486,487,488,489,707,708,709,710,711,846,847,848,995],
+        # [63,303,304,305,306,307,308,309,310,311,312,313,314,315,561,562,563,564,565,566,567,568,569,570,571,572,751,752,753,868,869],
     ]
     markers = [
-        # [[3, 115], [118, 368]],
-        # [[3, 365], [118, 604]],
-        # [[3, 5], [118, 151]],
-        # [[3, 111], [118, 354]],
+        [[3, 115], [118, 368]],
+        [[3, 365], [118, 604]],
+        [[3, 5], [118, 151]],
+        [[3, 111], [118, 354]],
         # [[3, 2], [118, 96]],
         # [[3, 145], [118, 406]],
         # [[3, 928], [118, 966]],
@@ -789,22 +796,23 @@ def main_for_price():
         # [[3, 12], [118, 211]],
         # [[3, 63], [118, 304]],
 
-        [[3, 115]],
-        [[3, 365]],
-        [[3, 5]],
-        [[3, 111]],
+        # [[3, 115]],
+        # [[3, 365]],
+        # [[3, 5]],
+        # [[3, 111]],
         # [[3, 2]],
-        [[3, 145]],
-        [[3, 928]],
-        [[3, 4]],
-        [[3, 12]],
-        [[3, 63], [118, 304]]
+        # [[3, 145]],
+        # [[3, 928]],
+        # [[3, 4]],
+        # [[3, 12]],
+        # [[3, 63], [118, 304]]
     ]
 
     source = nx.Graph(G.subgraph(source_nodes))
     source_G = Graph(source)
-    deformed_source_G = Graph(modify(source.copy()))
-    # deformed_source_G = Graph(tree_layout(source))
+    # deformed_source_G = Graph(modify(source.copy()))
+    # deformed_source_G = Graph(radial_tree_layout(source))
+    deformed_source_G = Graph(SM_layout(source))
     print(deformed_source_G.to_networkx().nodes.data())
 
     target_Gs = []
@@ -834,10 +842,9 @@ def main_for_finan():
          49162, 49170, 49174, 49182, 49183, 49184, 49212, 49213, 49214, 49220, 49221, 49222, 49228, 49232, 49236, 49240,
          49244, 49248, 49250, 49252, 49253, 49254, 49261, 49262, 49263, 49264, 49265, 49266, 49267, 49268, 49269, 49270,
          49271, 49272, 49273, 49274, 49275, 49276, 49277, 49278, 49279, 49280],
-        [49175, 49185, 49186, 49215, 49216, 49217, 49223, 49229, 49233, 49237, 49241, 49245, 49249, 49251, 49255, 49256,
-         49257, 49283, 49284, 49285, 49289, 49290, 49291, 49295, 49297, 49299, 49301, 49303, 49305, 49307, 49309, 49310,
-         49311, 49315, 49316, 49317, 49318, 49319, 49320, 49321, 49322, 49323, 49324, 49325, 49326, 49327, 49328, 49329,
-         49330, 49331, 49332, 49333, 49334, 49335, 49336],
+        [49215, 49229, 49233, 49241, 49245, 49249, 49251, 49255, 49256, 49257, 49283, 49284, 49285, 49289, 49290, 49291,
+         49295, 49297, 49299, 49301, 49303, 49305, 49307, 49309, 49310, 49311, 49315, 49316, 49317, 49318, 49319, 49320,
+         49321, 49322, 49323, 49324, 49325, 49326, 49327, 49328, 49329, 49330, 49331, 49332, 49333, 49334, 49335, 49336],
         [47374, 47398, 47399, 47400, 47477, 47478, 47479, 47566, 47569, 47572, 47575, 47578, 47581, 47584, 47585, 47586,
          47587, 47588, 47591, 47595, 47658, 47659, 47660, 47703, 47704, 47705, 47737, 47764, 47791, 47818, 47845, 47872,
          47883, 49536, 49537, 49538, 49557, 49558, 49559, 49560, 49561, 49562, 49563, 49564, 49565, 49566, 49567, 49568,
@@ -846,10 +853,10 @@ def main_for_finan():
          48176, 48188, 48189, 48190, 48227, 48228, 48229, 48243, 48244, 48245, 48260, 48271, 48282, 48293, 48304, 48315,
          48321, 48325, 48326, 48327, 48344, 48345, 48348, 48349, 48350, 48351, 48352, 48353, 48354, 48355, 48356, 48357,
          48358, 48359, 48360, 48361, 48362, 48363, 48364, 48365, 48366, 48367],
-        [47423, 47424, 47425, 47532, 47642, 47643, 47644, 47687, 47688, 47689, 47725, 47752, 47779, 47806, 47833, 47860,
-         47880, 47896, 47897, 47898, 47935, 47936, 47937, 47951, 47952, 47953, 47968, 47979, 47990, 48001, 48012, 48023,
-         48029, 48033, 48034, 48035, 48052, 48053, 48056, 48057, 48058, 48059, 48060, 48061, 48062, 48063, 48064, 48065,
-         48066, 48067, 48068, 48069, 48070, 48071, 48072, 48073, 48074, 48075],
+        [47642, 47687, 47725, 47752, 47779, 47806, 47833, 47880, 47896, 47897, 47898, 47935, 47936, 47937, 47951, 47952,
+         47953, 47968, 47979, 47990, 48001, 48012, 48023, 48029, 48033, 48034, 48035, 48052, 48053, 48056, 48057, 48058,
+         48059, 48060, 48061, 48062, 48063, 48064, 48065, 48066, 48067, 48068, 48069, 48070, 48071, 48072, 48073, 48074,
+         48075],
         [48469, 48483, 48484, 48485, 48522, 48523, 48524, 48538, 48539, 48540, 48553, 48564, 48575, 48586, 48597, 48608,
          48614, 48626, 48627, 48628, 48665, 48666, 48667, 48681, 48682, 48683, 48698, 48709, 48720, 48731, 48742, 48753,
          48759, 48763, 48764, 48765, 48782, 48783, 48786, 48787, 48788, 48789, 48790, 48791, 48792, 48793, 48794, 48795,
@@ -866,10 +873,9 @@ def main_for_finan():
          49046, 49052, 49064, 49065, 49066, 49101, 49102, 49103, 49115, 49116, 49117, 49129, 49137, 49145, 49153, 49161,
          49169, 49173, 49176, 49177, 49178, 49188, 49189, 49190, 49191, 49192, 49193, 49194, 49195, 49196, 49197, 49198,
          49199, 49200, 49201, 49202, 49203, 49204, 49205, 49206, 49207, 49208, 49209],
-        [47881, 47899, 47900, 47901, 47938, 47939, 47940, 47954, 47955, 47956, 47969, 47980, 47991, 48002, 48013,
-         48024, 48030, 48042, 48043, 48044, 48081, 48082, 48083, 48097, 48098, 48099, 48114, 48125, 48136, 48147, 48158,
-         48169, 48175, 48179, 48180, 48181, 48198, 48199, 48202, 48203, 48204, 48205, 48206, 48207, 48208, 48209, 48210,
-         48211, 48212, 48213, 48214, 48215, 48216, 48217, 48218, 48219, 48220, 48221],
+        [47899, 47938, 47940, 48030, 48042, 48043, 48044, 48081, 48082, 48083, 48097, 48098, 48099, 48114, 48125, 48136,
+         48147, 48158, 48169, 48175, 48179, 48180, 48181, 48198, 48199, 48202, 48203, 48204, 48205, 48206, 48207, 48208,
+         48209, 48210, 48211, 48212, 48213, 48214, 48215, 48216, 48217, 48218, 48219, 48220, 48221],
         [47177, 47203, 47204, 47205, 47243, 47244, 47245, 47260, 47261, 47262, 47279, 47293, 47306, 47319, 47332, 47345,
          47356, 47381, 47382, 47383, 47406, 47407, 47408, 47488, 47489, 47490, 47491, 47492, 47493, 47494, 47495, 47496,
          47497, 47498, 47499, 47500, 47501, 47502, 47606, 47607, 47608, 47609, 47610, 47611, 47612, 47613, 47614, 47615,
@@ -894,10 +900,16 @@ def main_for_finan():
         [[48906, 49052], [49051, 49173]],
         [[48906, 48030], [49051, 48175]],
         [[48906, 47356], [49051, 47489]],
+        # [[48761, 47529], [48906, 47879]],
+        # [[48761, 47886], [48906, 49396]],
         [[48906, 47529], [49051, 47879]],
         [[48906, 47886], [49051, 49396]],
     ]
 
+    # target_nodes = [target_nodes[i] for i in [3, 11, 12, 13]]
+    # markers = [markers[i] for i in [3, 11, 12, 13]]
+    # target_nodes = [target_nodes[i] for i in [12, 13]]
+    # markers = [markers[i] for i in [12, 13]]
     prefix = './data/finan512/'
     G = load_json_graph(prefix + 'graph-with-pos.json')
 
@@ -913,6 +925,14 @@ def main_for_finan():
     #         i += 1
 
     G = nx.subgraph(G, all_nodes)
+    for id in target_nodes[12]:
+        G.nodes[id]['y'] += 15
+    for id in target_nodes[11]:
+        G.nodes[id]['y'] += 5
+    for id in target_nodes[3]:
+        G.nodes[id]['y'] -= 5
+    for id in target_nodes[13]:
+        G.nodes[id]['y'] -= 15
 
     G = Graph(G)
     G.nodes = G.nodes.dot(np.array([[-1, 0], [0, -1]]))
@@ -921,7 +941,7 @@ def main_for_finan():
 
     source = nx.Graph(G.subgraph(source_nodes))
     source_G = Graph(source)
-    deformed_source_G = Graph(MMM_layout(source.copy()))
+    deformed_source_G = Graph(SM_layout(source.copy()))
 
     target_Gs = []
     for i in range(len(target_nodes)):
@@ -988,9 +1008,9 @@ if __name__ == '__main__':
     # main_for_power()
     # main_for_cortex()
     # main_for_mouse()
-    # main_for_price()
+    main_for_price()
     # main_for_vis()
-    main_for_finan()
+    # main_for_finan()
     # main_for_finan_compare()
     # main_for_vis_compare()
     # main_for_power_compare()

@@ -34,17 +34,17 @@
         // let path = './mammalia-voles-plj-trapping-25/'
         // let path = './mammalia-voles-bhp-trapping-60/'
         // let path = './bn-mouse-kasthuri/';
-        // let path = './test/'
+        // let path = './test/';
         // let path = './bn-mouse_visual-cortex_2/'
         // let path = './road-euroroad/'
         // let path = './power-662-bus/';
         // let path = './road-chesapeake/'
         // let path = './VIS/';
         // let path = './email/';
-        // let path = './price/';
+        let path = './price/';
         // let path = './visbrazil/'
         // let path = './synthetic/';
-        let path = './finan512/';
+        // let path = './finan512/';
 
         // ["asgGa",
         //     "asgPm",
@@ -59,9 +59,10 @@
         //     addGraph('result/' + name, 50 + i * 300, 50, 200, 200)
         // });
 
-        // addGraph('graph-with-pos', 50, 50, 800, 800)
-        addGraph('result/pos', 50, 50, 800, 800)
-        addGraph('result/new', 50, 1000, 800, 800)
+        addGraph('graph-with-pos', 50, 50, 800, 800)
+        // addGraph('result/pos', 50, 50, 800, 800)
+        addGraph('result/_new', 50, 1000, 800, 800)
+        addGraph('result/new', 1050, 1000, 800, 800)
 
         let n = 15 // target count
         let m = 2 // interpolation count
@@ -170,7 +171,7 @@
                     .data(graph.nodes)
                     .enter()
                     .append("circle")
-                    .attr("r", "1")
+                    .attr("r", "2")
                     .attr('fill', d => {
                         if ('color' in d) {
                             return colourBlend(d['color'])

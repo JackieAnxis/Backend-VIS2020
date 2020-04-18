@@ -6,7 +6,7 @@ import csv
 import json
 import networkx as nx
 from networkx.readwrite import json_graph
-from models.layout import layout
+from models.layout import layout, tree_layout, radial_tree_layout
 
 def connected_component_subgraphs(G):
     for c in nx.connected_components(G):
@@ -18,7 +18,7 @@ def connected_component_subgraphs(G):
 # path = './data/mammalia-voles-bhp-trapping-60/'
 # path = './data/bn-mouse_visual-cortex_2/'
 # path = './data/VIS/'
-# path = './data/price/'
+path = './data/price/'
 # path = './data/email/'
 # path = './data/finan512/'
 G = nx.read_edgelist(path + "graph.edgelist", nodetype=int,
@@ -48,7 +48,7 @@ data = json_graph.node_link_data(H)
 with open(path + 'graph.json', 'w') as f:
     json.dump(data, f)
 
-H = layout(H)
+H = radial_tree_layout(H)
 data = json_graph.node_link_data(H)
 with open(path + 'graph-with-pos.json', 'w') as f:
     json.dump(data, f)

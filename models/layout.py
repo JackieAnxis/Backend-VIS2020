@@ -59,7 +59,7 @@ def tree(tlpgraph):
     # params['node size'] = ...
     params['orientation'] = 'right to left'
     # params['uniform layer spacing'] = ...
-    params['layer spacing'] = 128
+    params['layer spacing'] = 1280
     # params['node spacing'] = 9
     resultLayout = tlpgraph.getLayoutProperty('resultLayout')
     success = tlpgraph.applyLayoutAlgorithm('Tree Leaf', resultLayout, params)
