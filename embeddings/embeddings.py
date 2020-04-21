@@ -5,7 +5,7 @@ import networkx as nx
 # dataset = 'bn-mouse-kasthuri'
 # dataset = 'email-Eu-core'
 # dataset = 'bio-DM-LC'
-dataset = 'VIS'
+dataset = 'finan512'
 
 prefix = '../data/'
 python = 'python3'

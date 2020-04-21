@@ -17,6 +17,7 @@
         } */
 
         /* line {
+
             stroke: rgb(211, 203, 183);
             stroke-width: 1;
         } */
@@ -27,7 +28,7 @@
     <!-- <button
         style="width: 40px; height: 15px; border-radius: 3px; font-size: 10px; position: fixed; top: 20px; left: 20px;"
         id="toggleText">TEXT</button> -->
-    <svg id="container" width="3500" height="2000">
+    <svg id="container" width="5000" height="2000">
     </svg>
     <script src="./d3.v4.min.js"></script>
     <script>
@@ -41,10 +42,10 @@
         // let path = './road-chesapeake/'
         // let path = './VIS/';
         // let path = './email/';
-        let path = './price/';
+        // let path = './price/';
         // let path = './visbrazil/'
         // let path = './synthetic/';
-        // let path = './finan512/';
+        let path = './finan512/';
 
         // ["asgGa",
         //     "asgPm",
@@ -59,12 +60,12 @@
         //     addGraph('result/' + name, 50 + i * 300, 50, 200, 200)
         // });
 
-        addGraph('graph-with-pos', 50, 50, 800, 800)
+        // addGraph('graph-with-pos', 50, 50, 800, 800)
         // addGraph('result/pos', 50, 50, 800, 800)
-        addGraph('result/_new', 50, 1000, 800, 800)
-        addGraph('result/new', 1050, 1000, 800, 800)
+        // addGraph('result/_new', 50, 1000, 800, 800)
+        // addGraph('result/new', 1050, 1000, 800, 800)
 
-        let n = 15 // target count
+        let n = 25 // target count
         let m = 2 // interpolation count
         for (let j = 0; j <= m; j++) {
             addGraph('result/interpolation' + j, 1000, 350 + j * 150, 100, 100)
@@ -93,7 +94,7 @@
             flag = !flag
             let font = 'font-size: 0'
             if (flag) {
-                font = 'font-size: 3px'
+                font = 'font-size: 7px'
             }
             d3.selectAll('text').attr('style', font)
         }
@@ -161,7 +162,7 @@
                             return "#cacaca"
                         }
                     })
-                    .attr("stroke-width", "0.2")
+                    .attr("stroke-width", "0.5")
                     .attr('source', d => d.source.id)
                     .attr('target', d => d.target.id)
 

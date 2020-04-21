@@ -70,7 +70,7 @@ class Graph():
         #     graph.nodes[id]['y'] = node[1]
         #     index += 1
         # return graph
-        graph = self.rawgraph
+        graph = self.rawgraph.copy()
         for node in graph.nodes.data():
             id = node[0]
             index = self.id2index[str(id)]

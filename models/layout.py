@@ -21,25 +21,32 @@ def save_json_graph(G, filename):
 def nx2tlp(G):
     graph = tlp.newGraph()
     nodes_map = {}
+
+    originLayout = graph.getLayoutProperty('originLayout')
+
     for node in G.nodes:
         nodes_map[node] = graph.addNode()
+        if 'x' in G.nodes[node]:
+            originLayout[nodes_map[node]] = tlp.Vec3f(G.nodes[node]['x'], G.nodes[node]['y'], 0.0)
+
+
     for edge in G.edges:
         graph.addEdge(nodes_map[edge[0]], nodes_map[edge[1]])
     return graph, nodes_map
 
-def overlap_removal(graph, layout):
+def overlap_removal(graph, layout, size=None):
     # get a dictionnary filled with the default plugin parameters values
     # graph is an instance of the tlp.Graph class
     params = tlp.getDefaultPluginParameters('Fast Overlap Removal', graph)
-
     # set any input parameter value if needed
     # params['overlap removal type'] = ...
     params['layout'] = layout
-    # params['bounding box'] = ...
+    if size:
+        params['bounding box'] = size
     # params['rotation'] = ...
     # params['number of passes'] = ...
-    # params['x border'] = ...
-    # params['y border'] = ...
+    # params['x border'] = 10
+    # params['y border'] = 10
 
     # either create or get a layout property from the graph to store the result of the algorithm
     resultLayout = graph.getLayoutProperty('resultLayout')
@@ -141,11 +148,51 @@ def FM3(tlpgraph):
     # success = graph.applyLayoutAlgorithm('FM^3 (OGDF)', params)
     return resultLayout
 
+def remove_overlap(G):
+    graph, nodes_map = nx2tlp(G)
+    # resultLayout = MMM(graph)
+    originLayout = graph.getLayoutProperty('originLayout')
+    params = tlp.getDefaultPluginParameters('Size Mapping', graph)
+    resultSize = graph.getSizeProperty('resultSize')
+    # params['property'] = ...
+    # params['input'] =
+    # params['width'] = True
+    # params['height'] = Trued
+    # params['depth'] = False
+    # success = graph.applySizeAlgorithm('Size Mapping', resultSize, params)
+    for n in G.nodes:
+        resultSize[nodes_map[n]] = tlp.Vec3f(65, 65, 0.0)
+    # get a dictionary filled with the default plugin parameters values
+    # graph is an instance of the tlp.Graph class
+    # get a dictionary filled with the default plugin parameters values
+    # graph is an instance of the tlp.Graph class
+    # params = tlp.getDefaultPluginParameters('Size Mapping', graph)
+    #
+    # # set any input parameter value if needed
+    # # params['property'] = ...
+    # params['input'] = resultSize
+    # # params['max size'] = ...
+    # # params['type'] = ...
+    # # params['target'] = ...
+    # # params['area proportional'] = ...
+    #
+    # # either create or get a size property from the graph to store the result of the algorithm
+    # resultSize = graph.getSizeProperty('resultSize')
+    # success = graph.applySizeAlgorithm('Size Mapping', resultSize, params)
+
+    resultLayout = overlap_removal(graph, originLayout, resultSize)
+    for n in G.nodes:
+        pos = resultLayout[nodes_map[n]]
+        if G.nodes[n]['x'] - pos[0] > 1 or G.nodes[n]['x'] - pos[0] < -1:
+            print('xxxx')
+        G.nodes[n]['x'] = pos[0]
+        G.nodes[n]['y'] = pos[1]
+    return G
+
 def layout(G):
     graph, nodes_map = nx2tlp(G)
     resultLayout = FM3(graph)
-    # resultLayout = MMM(graph)
-    resultLayout = overlap_removal(graph, resultLayout)
+    # resultLayout = overlap_removal(graph, resultLayout)
     for n in G.nodes:
         pos = resultLayout[nodes_map[n]]
         G.nodes[n]['x'] = pos[0]

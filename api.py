@@ -26,6 +26,7 @@ def hello_world():
 def whole_graph():
     # name = 'price'
     name='finan512'
+    # name = 'finan512_small'
     # name = 'VIS'
     # name = 'power-662-bus'
     # name = 'bn-mouse-kasthuri'
@@ -76,8 +77,8 @@ def compute():
 def search():
     settings = json.loads(request.data)
     dataset = settings['dataset']
-    # embedding_method = 'graphwave'
-    embedding_method = 'xnetmf'
+    embedding_method = 'graphwave'
+    # embedding_method = 'xnetmf'
     # embedding_method = 'graphwave2'
     # embedding_method = 'role2vec'
     # embedding_method = 'walklets'
