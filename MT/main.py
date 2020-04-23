@@ -67,17 +67,82 @@ def interpolate_v1(source_G, deformed_source_G, n):
 
 
 def generate(source_graph, deformed_source_graph, target_graph, markers):
+    ### convert class ###
     source_G = Graph(source_graph)
     deformed_source_G = Graph(deformed_source_graph)
     target_G = Graph(target_graph)
-    target_G = modification_transfer(source_G, target_G, markers, intermediate_states=[source_G, deformed_source_G])
-    return target_G.to_networkx()
+
+    ### convert id markers into index markers ###
+    markers[i] = np.array(markers[i])
+    markers[i][:, 0] = np.array([source_G.id2index[str(id)] for id in markers[i][:, 0]])
+    markers[i][:, 1] = np.array([target_G.id2index[str(id)] for id in markers[i][:, 1]])
+
+    generate_G(source_G, deformed_source_G, target_G, markers)
+    
+    return deformed_target_G.to_networkx()
+
+def generate_G(source_graph, deformed_source_graph, target_graph, markers):
+    original_markers = markers[i].copy()
+
+    ### force directed layout ###
+    fm3_source_G = Graph(layout(source_G.to_networkx()))
+    fm3_target_G = Graph(layout(target_G.to_networkx()))
+
+    ### align and flip to fit two force directed layout###    
+    R, t = aligning(fm3_source_G, fm3_target_G, markers)
+    fm3_target_G.nodes = fm3_target_G.nodes.dot(R0.T) + t0
+    distance_matrix = compute_distance_matrix(fm3_target_G.nodes, fm3_source_G.nodes)
+    min_dis_sum = np.sum(np.min(distance_matrix, axis=1))
+    flip_axis = -1
+    # i: flip axis, 0 represent flip by x=0, 1 represent flip by y=0
+    for i in range(2):
+        fm3_target_G_copy = fm3_target_G.copy()
+        # flip
+        fm3_target_G_copy.nodes[:, i] = np.mean(fm3_target_G_copy.nodes[:, i]) - (fm3_target_G_copy.nodes[:, i] - np.mean(fm3_target_G_copy.nodes[:, i]))
+        # align again
+        R, t = aligning(fm3_source_G, fm3_target_G_copy, markers)
+        fm3_target_G_copy.nodes = fm3_target_G_copy.nodes.dot(R.T) + t
+        distance_matrix = compute_distance_matrix(fm3_target_G_copy.nodes, fm3_source_G.nodes)
+        min_dis_sum_flip = np.sum(np.min(distance_matrix, axis=1))
+        if min_dis_sum_flip < min_dis_sum:
+            flip_axis = i
+            min_dis_sum = min_dis_sum_flip
+            fm3_target_G = fm3_target_G_copy
+
+    ### build correspondence between the source and target ###
+    while True: # until no new marker built
+        fm3_reg_target_G = non_rigid_registration(fm3_source_G, fm3_target_G, markers, alpha=0, beta=5, gamma=1000, iter=1000)  # deformation
+        new_markers = build_correspondence_v4(fm3_source_G, fm3_reg_target_G, markers, step=1)  # matching
+        fm3_target_G = reg_target_G
+        if new_markers.shape[0] <= markers.shape[0]:
+            break
+        markers = new_markers
+    
+    ### scale the target ###
+    e1 = mean_link_length(source_G)
+    e3 = mean_link_length(deformed_source_G)
+    scaled_target_G = target_G.copy()
+    scale = e3 / e1
+    center = np.mean(scaled_target_G.nodes, axis=0)
+    scaled_target_G.nodes = (scaled_target_G.nodes - center) * scale + center
+
+    ### register target into the source first and then the deformed source ###
+    # reg_target_G = non_rigid_registration(source_G, target_G, marker, alpha=0, beta=1, gamma=1000, iter=1000)
+    deformed_target_G = non_rigid_registration(deformed_source_G, scaled_target_G, marker, alpha=0, beta=1, gamma=1000, iter=1000)
+
+    ### rescale the deformed target back ###
+    center = np.mean(deformed_target_G.nodes, axis=0)
+    deformed_target_G.nodes = (deformed_target_G.nodes - center) / scale + center
+    R, t = aligning(target_G, deformed_target_G, original_markers)
+    deformed_target_G.nodes = deformed_target_G.nodes.dot(R.T) + t
+    # deformed_target_G.nodes = scale(target_Gs[i], reg_target_G)
+    
+    return deformation_target_G
 
 def modification_transfer(source_G, target_G, markers, intermediate_states=[], inter_res=False):
     # alignment
     raw_target_G = target_G.copy()
     # target_G = Graph(layout(target_G.rawgraph))
-
 
     R0, t0 = aligning(intermediate_states[0], target_G, markers)
     align_target_G = target_G.copy()

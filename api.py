@@ -1,5 +1,7 @@
 import os
+import math
 import json
+import random
 import networkx as nx
 from flask import Flask
 from flask import request
@@ -8,10 +10,9 @@ from models.get_data import get_test_data
 from networkx.readwrite import json_graph
 from embeddings.get_cluster import get_cluster_label
 from MT.main import generate
-from deformation.fuse import fuse_main
 from models.S3 import search_similar_structures
-from deformation.regal_alignment import get_regal_correspondence
 from subgraph.main import get_subgraph
+from models.utils import load_json_graph
 
 app = Flask(__name__)
 CORS(app)
@@ -20,6 +21,59 @@ CORS(app)
 @app.route('/')
 def hello_world():
     return 'Hello, World!'
+
+
+@app.route('/user-graph')
+def user_graph():
+    GRAPH_COUNT_IN_EACH_CASE = 4
+
+    prefix = './data/user_study/'
+    # index = 3
+    settings = json.loads(request.data)
+    index = int(settings['index'])
+    if index == -1:
+        cases = []
+        name = 'brain'
+        case = {'name': name}
+        exemplar = load_json_graph(prefix + name + '/0.json')
+        targets = []
+        for i in range(1, GRAPH_COUNT_IN_EACH_CASE):
+            g = load_json_graph(prefix + name + '/' + str(i) + '.json')
+            targets.append(g)
+        case['exemplar'] = exemplar
+        case['targets'] = targets
+        cases.append(case)
+
+        return {
+            "index": index,
+            "cases": cases,
+            "mode_sequence": [0, 1, 2]
+        }
+
+    exemplar_index = index % GRAPH_COUNT_IN_EACH_CASE
+    mode_sequence_choices = [[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0]]
+    mode_sequence = mode_sequence_choices[index % len(mode_sequence_choices)]
+    dataset_names = ['email_small', 'email_star', 'highschool_circle', 'highschool_complex', 'road', 'vis']
+    shuffle_dataset_names = random.shuffle(dataset_names)
+    cases = []
+    for name in shuffle_dataset_names:
+        case = { 'name': name }
+        exemplar = load_json_graph(prefix + name + '/' + str(exemplar_index) + '.json')
+        targets = []
+        for i in range(GRAPH_COUNT_IN_EACH_CASE):
+            if i != exemplar_index:
+                g = load_json_graph(prefix + name + '/' + str(i) + '.json')
+                targets.append(g)
+        case['exemplar'] = exemplar
+        case['targets'] = targets
+        cases.append(case)
+
+    return {
+        "index": index,
+        "cases": cases,
+        "mode_sequence": mode_sequence
+    }
+
 
 
 @app.route('/whole-graph')

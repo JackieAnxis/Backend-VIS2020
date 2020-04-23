@@ -32,11 +32,11 @@
     </svg>
     <script src="./d3.v4.min.js"></script>
     <script>
-        let path = './user_study/highschool_circle/'
+        let path = './user_study/email_small/'
         addGraph('exemplar', 50, 50, 100, 100)
         for (let i = 0; i < 17; i++) {
             for (let j = 0; j < 10; j++) {
-                addGraph(`target_${i * 10 + j}`, 200 + i * 150, 50 + j * 150, 100, 100)
+                addGraph(`${i * 10 + j}`, 200 + i * 150, 50 + j * 150, 100, 100)
             }
         }
 
