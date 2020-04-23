@@ -17,8 +17,8 @@ def connected_component_subgraphs(G):
 # path = './data/mammalia-voles-plj-trapping-25/'
 # path = './data/mammalia-voles-bhp-trapping-60/'
 # path = './data/bn-mouse_visual-cortex_2/'
-# path = './data/VIS/'
-path = './data/price/'
+path = './data/VIS/'
+# path = './data/price/'
 # path = './data/email/'
 # path = './data/finan512/'
 G = nx.read_edgelist(path + "graph.edgelist", nodetype=int,
@@ -48,7 +48,7 @@ data = json_graph.node_link_data(H)
 with open(path + 'graph.json', 'w') as f:
     json.dump(data, f)
 
-H = radial_tree_layout(H)
+H = layout(H)
 data = json_graph.node_link_data(H)
 with open(path + 'graph-with-pos.json', 'w') as f:
     json.dump(data, f)

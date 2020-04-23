@@ -278,14 +278,17 @@ if __name__ == '__main__':
     # path = './bn-mouse-kasthuri/'
     # path = './bn-mouse_visual-cortex_2/'
     # path = './power-662-bus/'
-    path = './visgrazil/'
-    filename = path + "graph.edgelist"
-    G = nx.read_edgelist(filename, nodetype=int, data=(('weight', float),))
+    # path = './data/VIS/'
+    # filename = path + "graph.edgelist"
+    # G = nx.read_edgelist(filename, nodetype=int, data=(('weight', float),))
 
-    # path = './email/'
-    # filename = path + "graph.json"
-    # G = load_json_graph(filename)
-    #
+    path = './data/email/'
+    filename = path + "graph-week-1.json"
+    _G = load_json_graph(filename)
+    G = nx.Graph()
+    for tuple in _G.edges:
+        G.add_edge(tuple[0], tuple[1])
+    G.remove_edges_from(nx.selfloop_edges(G))
     G.to_undirected()
     # remove_subgraphs = filter(lambda c: nx.diameter(c) <= 3, connected_component_subgraphs(G))
     # for rm_sub in list(remove_subgraphs):

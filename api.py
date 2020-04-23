@@ -25,11 +25,11 @@ def hello_world():
 @app.route('/whole-graph')
 def whole_graph():
     # name = 'price'
-    name='finan512'
+    # name='finan512'
     # name = 'finan512_small'
     # name = 'VIS'
     # name = 'power-662-bus'
-    # name = 'bn-mouse-kasthuri'
+    name = 'bn-mouse-kasthuri'
     # name = 'bn-mouse_visual-cortex_2'
     # name = 'email-Eu-core'
     # name = 'bio-DM-LC'

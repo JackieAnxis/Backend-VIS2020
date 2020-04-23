@@ -225,25 +225,35 @@ def deform_v7(G, target_pos, iter=1000, alpha=100, beta=5, gamma=200):
     LwSD[np.ix_(substructure_nodes * 2, substructure_nodes * 2)] = LwS
     LwSD[np.ix_(substructure_nodes * 2 + 1, substructure_nodes * 2 + 1)] = LwS
 
+    for index in target_pos:
+        V[index] = target_pos[index][0]
+
+    VD = np.tile(V, (1, n)) - np.tile(V.flatten(), (n, 1)).reshape((n, n * 2))  # initial vector direction
+    VDX = VD[:, N * 2]
+    VDY = VD[:, N * 2 + 1]
+    D = np.sqrt(VDX ** 2 + VDY ** 2)  # initial distance
+    VDX /= (D + eps)
+    VDX[N, N] = 0
+    VDY /= (D + eps)
+    VDY[N, N] = 0
+    D = np.asarray(D, dtype=np.float32)
+
     # gdM = G.compute_graph_distance_matrix()
     # w = ((3 - gdM) > 0) * (3 - gdM)
     # w = G.compute_adjacent_matrix() + np.ones((n, n)) - np.eye(n)
     w = np.ones((n, n)) - np.eye(n)  # without bias on links or distance
-    # w /= (D0**2 + eps) # give a bias on distance
+    w /= (D**2 + eps) # give a bias on distance
     Lw = (-w + np.diag(np.sum(w, axis=0)))
     LwD = np.zeros((2 * n, 2 * n))  # double Lw, for x and y
     LwD[np.ix_(N * 2, N * 2)] = Lw
     LwD[np.ix_(N * 2 + 1, N * 2 + 1)] = Lw
     
     ####
-    wVD = w.copy()
+    # wVD = w # .copy()
     # wVD[np.ix_(substructure_nodes, substructure_nodes)] = 0 # -= wS
     
-    C2 = np.vstack((np.sum(TVDX * wVD, axis=1), np.sum(TVDY * wVD, axis=1))).flatten('F')[:, np.newaxis] #[x,y,...].T
+    # C2 = np.vstack((np.sum(TVDX * wVD, axis=1), np.sum(TVDY * wVD, axis=1))).flatten('F')[:, np.newaxis] #[x,y,...].T
     ####
-
-    for index in target_pos:
-        V[index] = target_pos[index][0]
 
     coe = np.zeros((len(substructure_nodes) * 2, 2 * n))
     pos = np.zeros((len(substructure_nodes) * 2, 1))
@@ -256,15 +266,6 @@ def deform_v7(G, target_pos, iter=1000, alpha=100, beta=5, gamma=200):
         j += 2
 
     M1 = (LwD + LwSD * gamma)
-
-    VD = np.tile(V, (1, n)) - np.tile(V.flatten(), (n, 1)).reshape((n, n * 2))  # initial vector direction
-    VDX = VD[:, N * 2]
-    VDY = VD[:, N * 2 + 1]
-    D = np.sqrt(VDX ** 2 + VDY ** 2)  # initial distance
-    VDX /= (D + eps)
-    VDX[N, N] = 0
-    VDY /= (D + eps)
-    VDY[N, N] = 0
 
     for k in range(iter):
         Lwd = -w * (TD + eps) / (D + eps)
@@ -287,22 +288,21 @@ def deform_v7(G, target_pos, iter=1000, alpha=100, beta=5, gamma=200):
         LwdSD[np.ix_(substructure_nodes * 2 + 1, substructure_nodes * 2 + 1)] = LwdS
         C1 = (LwdD + LwdSD * gamma).dot(V.flatten())[:, np.newaxis]
 
-        wVD = w.copy()
-        # wVD[np.ix_(substructure_nodes, substructure_nodes)] = 0 # -= wS
-        wVD /= (D + eps)
-        wVD[N, N] = 0
-        LwVD = (-wVD + np.diag(np.sum(wVD, axis=0)))
-        LwVDD = np.zeros((n * 2, n * 2))
-        LwVDD[np.ix_(N * 2, N * 2)] = LwVD
-        LwVDD[np.ix_(N * 2 + 1, N * 2 + 1)] = LwVD
-        M2 = LwVDD
+        # wVD = w / (D + eps)
+        # wVD[N, N] = 0
+        # LwVD = (-wVD + np.diag(np.sum(wVD, axis=0)))
+        # LwVDD = np.zeros((n * 2, n * 2))
+        # LwVDD[np.ix_(N * 2, N * 2)] = LwVD
+        # LwVDD[np.ix_(N * 2 + 1, N * 2 + 1)] = LwVD
+        # M2 = LwVDD
 
-        M3 = np.vstack((M1 * beta, M2 * alpha, coe * gamma))
-        C3 = np.vstack((C1 * beta, C2 * alpha, pos * gamma))
+        M3 = np.vstack((M1 * beta)) #, M2 * alpha, coe * gamma))
+        C3 = np.vstack((C1 * beta)) #, C2 * alpha, pos * gamma))
 
         X = sparse.linalg.lsqr(M3, C3, iter_lim=50000, atol=1e-8, btol=1e-8, conlim=1e7, show=False, x0=V.flatten())[0]
         V_ = X.reshape((int(X.shape[0] / 2), 2))
-
+        VD = None
+        D = None
         VD = np.tile(V_, (1, n)) - np.tile(V_.flatten(), (n, 1)).reshape((n, n * 2))  # initial vector direction
         VDX = VD[:, N * 2]
         VDY = VD[:, N * 2 + 1]
@@ -319,12 +319,12 @@ def deform_v7(G, target_pos, iter=1000, alpha=100, beta=5, gamma=200):
         wSTRSbeta[np.ix_(substructure_nodes, substructure_nodes)] += wS * gamma
 
         COS = VDX * TVDX + VDY * TVDY
-        strs_ = np.sum((D - TD) ** 2 * wSTRSbeta) * beta + (np.sum((1 - COS) * wSTRSalpha)) * alpha # + np.sum(np.linalg.norm(V[substructure_nodes] - pos.reshape((int(pos.shape[0] / 2), 2)))) * gamma
+        strs_ = np.sum((D - TD) ** 2 * wSTRSbeta) * beta # + (np.sum((1 - COS) * wSTRSalpha)) * alpha # + np.sum(np.linalg.norm(V[substructure_nodes] - pos.reshape((int(pos.shape[0] / 2), 2)))) * gamma
         print('stress: ', strs_)
         if strs_ == 0:
             break
         if k > 0:
-            if (strs - strs_) / strs < eps:
+            if (strs - strs_) / strs < eps * 100:
                 break
         strs = strs_
         V = V_

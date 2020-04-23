@@ -62,10 +62,9 @@ def merge(G, subGs, iter=1000, alpha=1, beta=10, gamma=2000):
     G0 = G.copy()
     print('begin to compute distance matrix...')
     D = compute_distance_matrix(G1.nodes, G1.nodes)
-    surroundings_index = np.nonzero(
-
-        np.sum(D[list(target_pos.keys())] < np.array(list(target_r.values()))[:, np.newaxis], axis=0))[0]
+    surroundings_index = np.nonzero(np.sum(D[list(target_pos.keys())] < np.array(list(target_r.values()))[:, np.newaxis] / 2, axis=0))[0]
     non_fixed_surroundings_index = np.nonzero(np.sum(D[list(target_pos.keys())] < np.array(list(target_r.values()))[:, np.newaxis] / 2, axis=0))[0]
+    D = None
     surroundings_id = [G.index2id[index] for index in surroundings_index]
     fixed_surroundings_id = [G.index2id[index] for index in non_fixed_surroundings_index]
     # fixed_surroundings_id_set = set(fixed_surroundings_id)

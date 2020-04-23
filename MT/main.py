@@ -38,7 +38,7 @@ def scale(G0, G1):
     raw_min = np.min(G0.nodes, axis=0)
     max = np.max(V, axis=0)
     min = np.min(V, axis=0)
-    scale = np.mean((raw_max - raw_min) / (max - min)) # * 0.7
+    scale = np.mean((raw_max - raw_min) / (max - min)) * 0.8
     V -= min
     V *= scale
     V += raw_min
@@ -231,7 +231,7 @@ def main(prefix, G, source_G, deformed_source_G, target_Gs, markers):
         save_json_graph(inter_state, prefix + '/result/interpolation' + str(k) + '.json')
 
     save_json_graph(G, prefix + '/result/pos.json')
-    G0, G1 = merge(Graph(G), deformed_targets, iter=1000, alpha=0, beta=1, gamma=1000)
+    G0, G1 = merge(Graph(G), deformed_targets, iter=100, alpha=0, beta=1, gamma=1000)
     save_json_graph(G0.to_networkx(), prefix + '/result/new.json')
     save_json_graph(G1.to_networkx(), prefix + '/result/_new.json')
     return G0.to_networkx()
@@ -1007,13 +1007,13 @@ def main_for_finan():
 
     # G = nx.subgraph(G, all_nodes)
 
-    # for id in target_nodes[12]:
+    # for id in target_nodes[22]:
     #     G.nodes[id]['y'] += 15
-    # for id in target_nodes[11]:
+    # for id in target_nodes[21]:
     #     G.nodes[id]['y'] += 5
-    # for id in target_nodes[3]:
-    #     G.nodes[id]['y'] -= 5
     # for id in target_nodes[13]:
+    #     G.nodes[id]['y'] -= 5
+    # for id in target_nodes[23]:
     #     G.nodes[id]['y'] -= 15
 
     G = Graph(G)
