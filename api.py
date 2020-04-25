@@ -32,7 +32,7 @@ def user_graph(index):
     # settings = json.loads(request.data)
     # index = int(settings['index'])
     print(index)
-    if index == -1:
+    if index == 0:
         cases = []
         name = 'brain'
         case = {'name': name}
@@ -40,8 +40,13 @@ def user_graph(index):
         targets = []
         for i in range(1, GRAPH_COUNT_IN_EACH_CASE):
             g = load_json_graph(prefix + name + '/' + str(i) + '.json')
-            targets.append(g)
-        case['exemplar'] = exemplar
+            raw = json.loads(json.dumps(json_graph.node_link_data((g))))
+            raw['id'] = i
+            targets.append(raw)
+        
+        raw_exemplar = json.loads(json.dumps(json_graph.node_link_data(exemplar)))
+        raw_exemplar['id'] = 0 # tutorial exemplar id is 0
+        case['exemplar'] = raw_exemplar
         case['targets'] = targets
         cases.append(case)
 
