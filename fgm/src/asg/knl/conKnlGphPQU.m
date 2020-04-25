@@ -42,7 +42,7 @@ if strcmp(alg, 'toy')
 % for CMU Motion data
 elseif strcmp(alg, 'cmum')
     KP = zeros(n1, n2);
-    DQ = conDst(gph1.dsts, gph2.dsts);    
+    DQ = conDst(gph1.dsts, gph2.dsts);
     KQ = exp(-DQ / 2500);
 
 % for Pascal data

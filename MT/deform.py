@@ -249,10 +249,10 @@ def deform_v7(G, target_pos, iter=1000, alpha=100, beta=5, gamma=200):
     LwD[np.ix_(N * 2 + 1, N * 2 + 1)] = Lw
     
     ####
-    # wVD = w # .copy()
-    # wVD[np.ix_(substructure_nodes, substructure_nodes)] = 0 # -= wS
+    wVD = w # .copy()
+    wVD[np.ix_(substructure_nodes, substructure_nodes)] = 0 # -= wS
     
-    # C2 = np.vstack((np.sum(TVDX * wVD, axis=1), np.sum(TVDY * wVD, axis=1))).flatten('F')[:, np.newaxis] #[x,y,...].T
+    C2 = np.vstack((np.sum(TVDX * wVD, axis=1), np.sum(TVDY * wVD, axis=1))).flatten('F')[:, np.newaxis] #[x,y,...].T
     ####
 
     coe = np.zeros((len(substructure_nodes) * 2, 2 * n))
@@ -266,6 +266,8 @@ def deform_v7(G, target_pos, iter=1000, alpha=100, beta=5, gamma=200):
         j += 2
 
     M1 = (LwD + LwSD * gamma)
+
+    V = V0
 
     for k in range(iter):
         Lwd = -w * (TD + eps) / (D + eps)
@@ -288,16 +290,16 @@ def deform_v7(G, target_pos, iter=1000, alpha=100, beta=5, gamma=200):
         LwdSD[np.ix_(substructure_nodes * 2 + 1, substructure_nodes * 2 + 1)] = LwdS
         C1 = (LwdD + LwdSD * gamma).dot(V.flatten())[:, np.newaxis]
 
-        # wVD = w / (D + eps)
-        # wVD[N, N] = 0
-        # LwVD = (-wVD + np.diag(np.sum(wVD, axis=0)))
-        # LwVDD = np.zeros((n * 2, n * 2))
-        # LwVDD[np.ix_(N * 2, N * 2)] = LwVD
-        # LwVDD[np.ix_(N * 2 + 1, N * 2 + 1)] = LwVD
-        # M2 = LwVDD
+        wVD = w / (D + eps)
+        wVD[N, N] = 0
+        LwVD = (-wVD + np.diag(np.sum(wVD, axis=0)))
+        LwVDD = np.zeros((n * 2, n * 2))
+        LwVDD[np.ix_(N * 2, N * 2)] = LwVD
+        LwVDD[np.ix_(N * 2 + 1, N * 2 + 1)] = LwVD
+        M2 = LwVDD
 
-        M3 = np.vstack((M1 * beta)) #, M2 * alpha, coe * gamma))
-        C3 = np.vstack((C1 * beta)) #, C2 * alpha, pos * gamma))
+        M3 = np.vstack((M1 * beta, M2 * alpha)) #, coe * gamma))
+        C3 = np.vstack((C1 * beta, C2 * alpha)) #, pos * gamma))
 
         X = sparse.linalg.lsqr(M3, C3, iter_lim=50000, atol=1e-8, btol=1e-8, conlim=1e7, show=False, x0=V.flatten())[0]
         V_ = X.reshape((int(X.shape[0] / 2), 2))
@@ -319,8 +321,8 @@ def deform_v7(G, target_pos, iter=1000, alpha=100, beta=5, gamma=200):
         wSTRSbeta[np.ix_(substructure_nodes, substructure_nodes)] += wS * gamma
 
         COS = VDX * TVDX + VDY * TVDY
-        strs_ = np.sum((D - TD) ** 2 * wSTRSbeta) * beta # + (np.sum((1 - COS) * wSTRSalpha)) * alpha # + np.sum(np.linalg.norm(V[substructure_nodes] - pos.reshape((int(pos.shape[0] / 2), 2)))) * gamma
-        print('stress: ', strs_)
+        strs_ = np.sum((D - TD) ** 2 * wSTRSbeta) * beta + (np.sum((1 - COS) * wSTRSalpha)) * alpha # + np.sum(np.linalg.norm(V[substructure_nodes] - pos.reshape((int(pos.shape[0] / 2), 2)))) * gamma
+        # print('stress: ', strs_)
         if strs_ == 0:
             break
         if k > 0:

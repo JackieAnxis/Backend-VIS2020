@@ -18,7 +18,27 @@ from models.utils import load_json_graph, save_json_graph
 from fgm.fgm import fgm
 from models.layout import tree_layout, radial_tree_layout, layout, MMM_layout, GEM_layout, nx_spring_layout, SM_layout, remove_overlap
 
-names = ["Ga", "Pm", "Sm", "Smac", "IpfpU", "IpfpS", "Rrwm", "FgmU"] # , "FgmD"]
+# names = ["Ga", "Pm", "Sm", "Smac", "Rrwm", "FgmU"] # ,"IpfpU", "IpfpS", "FgmD"]
+names = ["FgmU"] # ,"IpfpU", "IpfpS", "FgmD"]
+
+def markers2matrix(markers, n, m):
+    mat = np.zeros((n, m))
+    for marker in markers:
+        mat[marker[0], marker[1]] = 1
+    return mat
+
+def mean_link_length_of_nodes(G):
+    A = G.compute_adjacent_matrix()
+    MLL = [] # mean link length
+    for i in range(A.shape[0]):
+        d = 0
+        e = 0
+        for j in range(0, A.shape[0]):
+            if A[i, j]:
+                d += np.linalg.norm(G.nodes[i] - G.nodes[j])
+                e += 1
+        MLL.append(d / e)
+    return np.array(MLL)
 
 def mean_link_length(G):
     A = G.compute_adjacent_matrix()
@@ -66,78 +86,170 @@ def interpolate_v1(source_G, deformed_source_G, n):
     return results
 
 
-def generate(source_graph, deformed_source_graph, target_graph, markers):
+def generate(source_graph, deformed_source_graph, target_graph):
     ### convert class ###
     source_G = Graph(source_graph)
     deformed_source_G = Graph(deformed_source_graph)
     target_G = Graph(target_graph)
 
     ### convert id markers into index markers ###
-    markers[i] = np.array(markers[i])
-    markers[i][:, 0] = np.array([source_G.id2index[str(id)] for id in markers[i][:, 0]])
-    markers[i][:, 1] = np.array([target_G.id2index[str(id)] for id in markers[i][:, 1]])
+    # markers = np.array(markers)
+    # markers[:, 0] = np.array([source_G.id2index[str(id)] for id in markers[:, 0]])
+    # markers[:, 1] = np.array([target_G.id2index[str(id)] for id in markers[:, 1]])
 
-    generate_G(source_G, deformed_source_G, target_G, markers)
+    deformed_target_G, markers = generate_G(source_G, deformed_source_G, target_G)
+
+    markers[:, 0] = np.array([source_G.index2id[index] for index in markers[:, 0]])
+    markers[:, 1] = np.array([target_G.index2id[index] for index in markers[:, 1]])
     
-    return deformed_target_G.to_networkx()
+    return deformed_target_G.to_networkx(), markers.tolist()
 
-def generate_G(source_graph, deformed_source_graph, target_graph, markers):
-    original_markers = markers[i].copy()
+def generate_G(source_G, deformed_source_G, target_G):
+    ### store raw data ###
+    raw_source_G = source_G.copy()
+    raw_deformed_source_G = deformed_source_G.copy()
+    raw_target_G = target_G.copy()
 
     ### force directed layout ###
-    fm3_source_G = Graph(layout(source_G.to_networkx()))
-    fm3_target_G = Graph(layout(target_G.to_networkx()))
+    fm3_source = layout(source_G.to_networkx())
+    fm3_target = layout(target_G.to_networkx())
+    origin_fm3_source_G = Graph(fm3_source)
+    origin_fm3_target_G = Graph(fm3_target)
 
-    ### align and flip to fit two force directed layout###    
-    R, t = aligning(fm3_source_G, fm3_target_G, markers)
-    fm3_target_G.nodes = fm3_target_G.nodes.dot(R0.T) + t0
-    distance_matrix = compute_distance_matrix(fm3_target_G.nodes, fm3_source_G.nodes)
-    min_dis_sum = np.sum(np.min(distance_matrix, axis=1))
-    flip_axis = -1
-    # i: flip axis, 0 represent flip by x=0, 1 represent flip by y=0
-    for i in range(2):
-        fm3_target_G_copy = fm3_target_G.copy()
-        # flip
-        fm3_target_G_copy.nodes[:, i] = np.mean(fm3_target_G_copy.nodes[:, i]) - (fm3_target_G_copy.nodes[:, i] - np.mean(fm3_target_G_copy.nodes[:, i]))
-        # align again
-        R, t = aligning(fm3_source_G, fm3_target_G_copy, markers)
-        fm3_target_G_copy.nodes = fm3_target_G_copy.nodes.dot(R.T) + t
-        distance_matrix = compute_distance_matrix(fm3_target_G_copy.nodes, fm3_source_G.nodes)
-        min_dis_sum_flip = np.sum(np.min(distance_matrix, axis=1))
-        if min_dis_sum_flip < min_dis_sum:
-            flip_axis = i
-            min_dis_sum = min_dis_sum_flip
-            fm3_target_G = fm3_target_G_copy
+    G1_node_link_data = json.dumps(json_graph.node_link_data(fm3_source))
+    G2_node_link_data = json.dumps(json_graph.node_link_data(fm3_target))
+    M = fgm(G1_node_link_data, G2_node_link_data)
 
-    ### build correspondence between the source and target ###
-    while True: # until no new marker built
-        fm3_reg_target_G = non_rigid_registration(fm3_source_G, fm3_target_G, markers, alpha=0, beta=5, gamma=1000, iter=1000)  # deformation
-        new_markers = build_correspondence_v4(fm3_source_G, fm3_reg_target_G, markers, step=1)  # matching
-        fm3_target_G = reg_target_G
-        if new_markers.shape[0] <= markers.shape[0]:
-            break
+    deformed_target_Gs = {}
+    for name in names:
+        fm3_source_G = origin_fm3_source_G.copy()
+        fm3_target_G = origin_fm3_target_G.copy()
+        markers = M[name]
+        markers[:, 0] = np.array([source_G.id2index[str(id)] for id in markers[:, 0]])
+        markers[:, 1] = np.array([target_G.id2index[str(id)] for id in markers[:, 1]])
+
+
+        ### align and flip to fit two force directed layout###
+        R, t = aligning(fm3_source_G, fm3_target_G, markers)
+        fm3_target_G.nodes = fm3_target_G.nodes.dot(R.T) + t
+        distance_matrix = compute_distance_matrix(fm3_target_G.nodes, fm3_source_G.nodes)
+        min_dis_sum = np.sum(np.min(distance_matrix, axis=1))
+        flip_axis = -1
+        # i: flip axis, 0 represent flip by x=0, 1 represent flip by y=0
+        for i in range(2):
+            fm3_target_G_copy = fm3_target_G.copy()
+            # flip
+            fm3_target_G_copy.nodes[:, i] = np.mean(fm3_target_G_copy.nodes[:, i]) - (fm3_target_G_copy.nodes[:, i] - np.mean(fm3_target_G_copy.nodes[:, i]))
+            # align again
+            R, t = aligning(fm3_source_G, fm3_target_G_copy, markers)
+            fm3_target_G_copy.nodes = fm3_target_G_copy.nodes.dot(R.T) + t
+            distance_matrix_copy = compute_distance_matrix(fm3_target_G_copy.nodes, fm3_source_G.nodes)
+            min_dis_sum_flip = np.sum(np.min(distance_matrix_copy, axis=1))
+            if min_dis_sum_flip < min_dis_sum:
+                flip_axis = i
+                min_dis_sum = min_dis_sum_flip
+                fm3_target_G = fm3_target_G_copy
+                distance_matrix = distance_matrix_copy
+
+
+        markers_matrix = markers2matrix(markers, source_G.nodes.shape[0], target_G.nodes.shape[0])
+        SA = source_G.compute_adjacent_matrix()
+        TA = target_G.compute_adjacent_matrix()
+        new_markers = []
+        neighbor_rate_threshold = 0.7
+        distance_rate_threshold = 1.5
+        new_marker_rate_range = [0.1, 0.5]
+        eps = 1e-6
+        while True:
+            new_markers = []
+            for marker_pair in markers:
+                sm = marker_pair[0] # source marker
+                tm = marker_pair[1] # target marker
+                smn = np.nonzero(SA[sm])[0] # source marker neighbors
+                tmn = np.nonzero(TA[tm])[0] # target marker neighbors
+                smn2tm = np.nonzero(np.sum(markers_matrix[smn, :], axis=0))[0] # source marker neighbors' correspond target markers
+                smn2tms = set(smn2tm)  # source marker neighbors' correspond target markers set
+                tmns = set(tmn) # target marker neighbors set
+                and_count = len(smn2tms & tmns)
+                smmll = np.mean(np.sqrt(np.sum((source_G.nodes[[sm for i in range(len(smn))]] - source_G.nodes[smn]) ** 2, axis=1))) # source markers' mean edge length
+                tmmll = np.mean(np.sqrt(np.sum((target_G.nodes[[tm for i in range(len(tmn))]] - target_G.nodes[tmn]) ** 2, axis=1)))  # target markers' mean edge length
+                ### delete markers that links too much different neighbors ###
+                if and_count < len(smn2tms) * neighbor_rate_threshold and and_count < len(tmn) * neighbor_rate_threshold:
+                    # need to be deleted
+                    continue
+                ### delete markers that are far ###
+                dis = np.sqrt(np.sum((fm3_source_G.nodes[sm] - fm3_target_G.nodes[tm])**2))
+                if dis > smmll * distance_rate_threshold or dis > tmmll * distance_rate_threshold:
+                    continue
+                new_markers.append(marker_pair.tolist())
+
+            new_marker_rate = len(new_markers) / len(markers)
+            if new_marker_rate < new_marker_rate_range[0]:
+                neighbor_rate_threshold -= 0.1
+                distance_rate_threshold += 0.1
+                neighbor_rate_threshold = np.max((0.3, neighbor_rate_threshold))
+                distance_rate_threshold = np.min((5, distance_rate_threshold))
+                if distance_rate_threshold >= 5 - eps and neighbor_rate_threshold <= 0.3 + eps:
+                    break
+                print(new_marker_rate, neighbor_rate_threshold, distance_rate_threshold)
+            elif new_marker_rate > new_marker_rate_range[1]:
+                neighbor_rate_threshold += 0.1
+                distance_rate_threshold -= 0.1
+                neighbor_rate_threshold = np.min((0.9, neighbor_rate_threshold))
+                distance_rate_threshold = np.max((0, distance_rate_threshold))
+                if distance_rate_threshold >= - eps and neighbor_rate_threshold <= 0.9 + eps:
+                    break
+                print(new_marker_rate, neighbor_rate_threshold, distance_rate_threshold)
+            else:
+                break
+
+        if len(new_markers) == 0:
+            print(name, 'failed!!')
+            continue # this method failed
+
+        new_markers = np.array(new_markers)
+        print('new markers rate: ', new_markers.shape[0] / markers.shape[0])
         markers = new_markers
-    
-    ### scale the target ###
-    e1 = mean_link_length(source_G)
-    e3 = mean_link_length(deformed_source_G)
-    scaled_target_G = target_G.copy()
-    scale = e3 / e1
-    center = np.mean(scaled_target_G.nodes, axis=0)
-    scaled_target_G.nodes = (scaled_target_G.nodes - center) * scale + center
+        original_markers = markers.copy()
 
-    ### register target into the source first and then the deformed source ###
-    # reg_target_G = non_rigid_registration(source_G, target_G, marker, alpha=0, beta=1, gamma=1000, iter=1000)
-    deformed_target_G = non_rigid_registration(deformed_source_G, scaled_target_G, marker, alpha=0, beta=1, gamma=1000, iter=1000)
+        ### build correspondence between the source and target ###
+        while True: # until no new marker built
+            fm3_reg_target_G = non_rigid_registration(fm3_source_G, fm3_target_G, markers, alpha=0, beta=5, gamma=1000, iter=1000)  # deformation
+            new_markers = build_correspondence_v4(fm3_source_G, fm3_reg_target_G, markers, step=1)  # matching
+            fm3_target_G = fm3_reg_target_G
+            if new_markers.shape[0] <= markers.shape[0]:
+                break
+            markers = new_markers
 
-    ### rescale the deformed target back ###
-    center = np.mean(deformed_target_G.nodes, axis=0)
-    deformed_target_G.nodes = (deformed_target_G.nodes - center) / scale + center
-    R, t = aligning(target_G, deformed_target_G, original_markers)
-    deformed_target_G.nodes = deformed_target_G.nodes.dot(R.T) + t
-    # deformed_target_G.nodes = scale(target_Gs[i], reg_target_G)
-    
-    return deformation_target_G
+        ### scale the target ###
+        e1 = mean_link_length(source_G)
+        e3 = mean_link_length(deformed_source_G)
+        scaled_target_G = target_G.copy()
+        scale = e3 / e1
+        center = np.mean(scaled_target_G.nodes, axis=0)
+        scaled_target_G.nodes = (scaled_target_G.nodes - center) * scale + center
+
+        # ### align the target to the source ###
+        # R, t = aligning(deformed_source_G, scaled_target_G, markers)
+        # scaled_target_G.nodes = scaled_target_G.nodes.dot(R) + t
+
+        ### register target into the source first and then the deformed source ###
+        # reg_target_G = non_rigid_registration(source_G, target_G, marker, alpha=0, beta=1, gamma=1000, iter=1000)
+        deformed_target_G = non_rigid_registration(deformed_source_G, scaled_target_G, markers, alpha=500, beta=1, gamma=50, iter=1000)
+
+        ### rescale the deformed target back ###
+        center = np.mean(deformed_target_G.nodes, axis=0)
+        deformed_target_G.nodes = (deformed_target_G.nodes - center) / scale + center
+        target_original_markers = np.array([[marker, marker] for marker in original_markers[:, 1]])
+        R, t = aligning(target_G, deformed_target_G, target_original_markers)
+        deformed_target_G.nodes = deformed_target_G.nodes.dot(R.T) + t
+        # deformed_target_G.nodes = scale(target_Gs[i], reg_target_G)
+        
+        deformed_target_Gs[name] = {
+            "filtered_markers": original_markers,
+            "deformed_target_G": deformed_target_G
+        }
+    return deformed_target_Gs, markers
 
 def modification_transfer(source_G, target_G, markers, intermediate_states=[], inter_res=False):
     # alignment
@@ -381,13 +493,24 @@ def main_for_power():
     source_G = Graph(source)
     deformed_source_G = modify(source_G, source_nodes)
 
-    target_Gs = []
+    # target_Gs = []
+    # for i in range(len(target_nodes)):
+    #     target = nx.Graph(G.subgraph(target_nodes[i]))
+    #     target_G = Graph(target)
+    #     target_Gs.append(target_G)
+
     for i in range(len(target_nodes)):
         target = nx.Graph(G.subgraph(target_nodes[i]))
         target_G = Graph(target)
-        target_Gs.append(target_G)
+        deformed_target_Gs, markers = generate_G(source_G, deformed_source_G, target_G)
+        j = 0
+        for name in deformed_target_Gs:
+            deformed_target = deformed_target_Gs[name]['deformed_target_G'].to_networkx()
+            print(name, 'filter rate:', deformed_target_Gs[name]['filtered_markers'] / np.min((source_G.nodes.shape[0], target_G.nodes.shape[0])))
+            save_json_graph(deformed_target, './data/power-662-bus/result/deformed_target' + str(i) + '_' + name + '.json')
+            j += 1
 
-    main(prefix, G, source_G, deformed_source_G, target_Gs, markers)
+    # main(prefix, G, source_G, deformed_source_G, target_Gs, markers)
 
 def main_for_power_compare():
     def modify(source_G, source_nodes):
@@ -1090,75 +1213,75 @@ def main_for_finan():
     source_G = Graph(source)
     deformed_source_G = Graph(SM_layout(source.copy()))
 
-    target_Gs = []
+    target_nodes = [target_nodes[7]]
     for i in range(len(target_nodes)):
         target = nx.Graph(G.subgraph(target_nodes[i]))
-        target_G = Graph(target)
-        # ### for finan ####
-        # if i in [1, 2, 3, 4, 6, 10, 11, 12]:
-        #     target_G.nodes[:, 1] = np.mean(target_G.nodes[:, 1]) - (target_G.nodes[:, 1] - np.mean(target_G.nodes[:, 1]))
-        #     target_G = Graph(target_G.to_networkx())
-        # ### for finan ####
-        target_Gs.append(target_G)
+        deformed_target, markers = generate(source, SM_layout(source.copy()), target)
+        save_json_graph(deformed_target, './data/finan512/result/deformed_target' + str(i) + '.json')
 
-    R, t = aligning(source_G, deformed_source_G,
-                    # np.array([[source_G.id2index[str(id)], source_G.id2index[str(id)]] for id in [49051, 48906]]))
-                    np.array([[index, index] for index in source_G.index2id]))
-    deformed_source_G.nodes = deformed_source_G.nodes.dot(R.T) + t
-    deformed_source_G.nodes = scale(source_G, deformed_source_G)
+    # target_Gs = []
+    # for i in range(len(target_nodes)):
+    #     target = nx.Graph(G.subgraph(target_nodes[i]))
+    #     target_G = Graph(target)
+    #     # ### for finan ####
+    #     # if i in [1, 2, 3, 4, 6, 10, 11, 12]:
+    #     #     target_G.nodes[:, 1] = np.mean(target_G.nodes[:, 1]) - (target_G.nodes[:, 1] - np.mean(target_G.nodes[:, 1]))
+    #     #     target_G = Graph(target_G.to_networkx())
+    #     # ### for finan ####
+    #     target_Gs.append(target_G)
 
-    main(prefix, G, source_G, deformed_source_G, target_Gs, markers)
+    # R, t = aligning(source_G, deformed_source_G,
+    #                 # np.array([[source_G.id2index[str(id)], source_G.id2index[str(id)]] for id in [49051, 48906]]))
+    #                 np.array([[index, index] for index in source_G.index2id]))
+    # deformed_source_G.nodes = deformed_source_G.nodes.dot(R.T) + t
+    # deformed_source_G.nodes = scale(source_G, deformed_source_G)
+    #
+    # main(prefix, G, source_G, deformed_source_G, target_Gs, markers)
 
-def main_for_finan_compare():
-    prefix = './data/finan512/'
-    source_nodes = [48761, 48775, 48776, 48777, 48814, 48815, 48816, 48830, 48831, 48832, 48845, 48856, 48867, 48878,
-                    48889, 48900,
-                    48906, 48918, 48919, 48920, 48957, 48958, 48959, 48973, 48974, 48975, 48990, 49001, 49012, 49023,
-                    49034, 49045,
-                    49051, 49055, 49056, 49057, 49073, 49074, 49076, 49077, 49078, 49079, 49080, 49081, 49082, 49083,
-                    49084, 49085,
-                    49086, 49087, 49088, 49089, 49090, 49091, 49092, 49093, 49094, 49095]
-    target_nodes = [
-        [48615, 48629, 48630, 48631, 48668, 48669, 48670, 48684, 48685, 48686, 48699, 48710, 48721, 48732, 48743, 48754,
-         48760, 48772, 48773, 48774, 48811, 48812, 48813, 48827, 48828, 48829, 48844, 48855, 48866, 48877, 48888, 48899,
-         48905, 48909, 48910, 48911, 48928, 48929, 48932, 48933, 48934, 48935, 48936, 48937, 48938, 48939, 48940, 48941,
-         48942, 48943, 48944, 48945, 48946, 48947, 48948, 48949, 48950, 48951],
-    ]
-    markers = [
-        [[49051, 48905], [48906, 48760]],
-    ]
-
-    prefix = './data/finan512/'
-    G = load_json_graph(prefix + 'graph-with-pos.json')
-    source = nx.Graph(G.subgraph(source_nodes))
-    target = nx.Graph(G.subgraph(target_nodes[0]))
+def compare_for_finan():
+    source = load_json_graph('./data/finan512/result/interpolation1.json')
     source_G = Graph(source)
-    target_G = Graph(target)
-    deformed_source_G = Graph(layout(source.copy()))
+    deformed_source = load_json_graph('./data/finan512/result/interpolation2.json')
+    deformed_source_G = Graph(deformed_source)
+    for i in [0, 7, 8, 12, 15, 23]:
+        target = target = load_json_graph('./data/finan512/result/target' + str(i) + '.json')
+        target_G = Graph(target)
+        deformed_target_Gs, markers = generate_G(source_G, deformed_source_G, target_G)
+        j = 0
+        for name in deformed_target_Gs:
+            deformed_target = deformed_target_Gs[name]['deformed_target_G'].to_networkx()
+            print(name, 'filter rate:', deformed_target_Gs[name]['filtered_markers'].shape[0] / np.min(
+                (source_G.nodes.shape[0], target_G.nodes.shape[0])))
+            save_json_graph(deformed_target, './data/finan512/result/deformed_target' + str(i) + '_' + name + '.json')
+            # save_json_graph(deformed_target, './data/finan512/result/deformed_target' + str(i) + '.json')
+            j += 1
 
-    source_node_link_data = json.dumps(json_graph.node_link_data(source_G.to_networkx()))
-    target_node_link_data = json.dumps(json_graph.node_link_data(target_G.to_networkx()))
-    M = fgm(source_node_link_data, target_node_link_data)
-    target_Gs = [target_G]
-
-    print(M)
-    for i in range(len(names)):
-        name = names[i]
-        markers.append(M[name].tolist())
-
-        target_Gs.append(target_G)
-
-    main(prefix, G, source_G, deformed_source_G, target_Gs, markers)
-
+def main_for_vis():
+    source = load_json_graph('./data/vis/result/interpolation1.json')
+    source_G = Graph(source)
+    deformed_source = load_json_graph('./data/vis/result/interpolation1.json')
+    deformed_source_G = Graph(deformed_source)
+    for i in range(6):
+        target = target = load_json_graph('./data/vis/result/target' + str(i) + '.json')
+        target_G = Graph(target)
+        deformed_target_Gs, markers = generate_G(source_G, deformed_source_G, target_G)
+        j = 0
+        for name in deformed_target_Gs:
+            deformed_target = deformed_target_Gs[name]['deformed_target_G'].to_networkx()
+            print(name, 'filter rate:', deformed_target_Gs[name]['filtered_markers'].shape[0] / np.min((source_G.nodes.shape[0], target_G.nodes.shape[0])))
+            # save_json_graph(deformed_target, './data/vis/result/deformed_target' + str(i) + '_' + name + '.json')
+            save_json_graph(deformed_target, './data/vis/result/deformed_target' + str(i) + '.json')
+            j += 1
 
 if __name__ == '__main__':
     # main_for_power()
     # main_for_cortex()
     # main_for_mouse()
     # main_for_price()
-    # main_for_vis()
-    main_for_finan()
+    main_for_vis()
+    # main_for_finan()
     # main_for_finan_compare()
     # main_for_vis_compare()
     # main_for_power_compare()
     # main_for_mouse_compare()
+    # compare_for_finan()

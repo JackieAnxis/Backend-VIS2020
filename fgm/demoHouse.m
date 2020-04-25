@@ -24,6 +24,7 @@ parKnl = st('alg', 'cmum'); % type of affinity: only edge distance
 %% src
 wsSrc = cmumAsgSrc(tag, pFs, nIn, 'svL', 1);
 asgT = wsSrc.asgT;
+asgT.X = []
 
 %% feature
 parG = st('link', 'del'); % Delaunay triangulation for computing the graphs

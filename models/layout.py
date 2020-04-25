@@ -192,7 +192,7 @@ def remove_overlap(G):
 def layout(G):
     graph, nodes_map = nx2tlp(G)
     resultLayout = FM3(graph)
-    # resultLayout = overlap_removal(graph, resultLayout)
+    resultLayout = overlap_removal(graph, resultLayout)
     for n in G.nodes:
         pos = resultLayout[nodes_map[n]]
         G.nodes[n]['x'] = pos[0]

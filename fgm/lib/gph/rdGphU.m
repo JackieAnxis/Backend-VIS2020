@@ -35,13 +35,18 @@ index2id = [];
 n = size(val.nodes, 1);
 for i=1:n
     node=val.nodes(i:i);
-    Ptx = [Ptx, node.x];
-    Pty = [Pty, node.y];
+    x = node.x;
+    y = node.y;
+%    fprintf("%f, %f", x, y);
+    Ptx = [Ptx, x];
+    Pty = [Pty, y];
     id = str2num(node.id);
+    % id = node.id;
     index2id = [index2id, id];
+    fprintf('%d ', id);
 end
 Pt = [Ptx;Pty];
-
+fprintf('\n');
 Eg1 = [];
 Eg2 = [];
 m = size(val.links, 1);
@@ -51,20 +56,31 @@ for i=1:m
     target = str2num(link.target);
     source = find(index2id==source);
     target = find(index2id==target);
-    Eg1 = [Eg1, source, target];
-    Eg2 = [Eg2, target, source];
+    Eg1 = [Eg1, source];
+    Eg2 = [Eg2, target];
 end
-Eg = [Eg1;Eg2];
+Eg = [[Eg1, Eg2];[Eg2, Eg1]];
+%parG = st('link', 'del');
+%[Eg, vis] = gphEg(Pt, parG);
 
-%n = size(Pt, 2);
-fprintf('size %d', n);
-% incidence matrix
+%fprintf('Given links: ');
+%for i=1:size(Eg1, 1)
+%    fprintf('%d %d, ', Eg1(i:i), Eg2(i:i));
+%end
+%
+%fprintf('\n');
+%fprintf('Built links: ');
+%for i=1:size(Eg, 1)
+%    fprintf('%d %d, ', Eg(i:i));
+%end
+
 [G, H] = gphEg2IncU(Eg, n);
 
 % second-order feature
 [PtD, dsts, angs, angAs] = gphEg2Feat(Pt, Eg);
 
 % store
+% gph.vis = vis;
 gph.Pt = Pt;
 gph.Eg = Eg;
 gph.vis = [];

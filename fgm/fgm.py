@@ -27,7 +27,8 @@ def fgm(source, target, name="FgmU"):
     eng = matlab.engine.start_matlab()
     eng.cd(r'./fgm', nargout=0)
     eng.addPath(nargout=0)
-    r = eng.fgm(source, target, name)
+    # r = eng.fgm(source, target, name)
+    r = eng.fgmOnly(source, target, name)
     source_index2id = np.array(r['sourceindex2id'][0], dtype=np.int32)
     target_index2id = np.array(r['targetindex2id'][0], dtype=np.int32)
 
