@@ -17,7 +17,7 @@ from models.utils import load_json_graph
 app = Flask(__name__)
 CORS(app)
 
-@app.route('/user-study/generate')
+@app.route('/user-study/generate', methods=['POST'])
 def generate_auto():
     req = json.loads(request.data)
     source = json_graph.node_link_graph(req['source'])
@@ -25,7 +25,10 @@ def generate_auto():
     target = json_graph.node_link_graph(req['target'])
     #### markers ####
     # [[source id, target id], [], []]
-    target_generated = generate(source, source_modified, target, markers=req['markers'])
+    if 'markers' in req:
+        target_generated = generate(source, source_modified, target, markers=req['markers'])
+    else:
+        target_generated = generate(source, source_modified, target)
     return json_graph.node_link_data(target_generated)
 
 @app.route('/')
