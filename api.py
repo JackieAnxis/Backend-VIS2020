@@ -17,6 +17,14 @@ from models.utils import load_json_graph
 app = Flask(__name__)
 CORS(app)
 
+@app.route('/user-study/generate-auto')
+def generate_auto():
+    req = json.loads(request.data)
+    source = json_graph.node_link_graph(req['source'])
+    source_modified = json_graph.node_link_graph(req['sourceModified'])
+    target = json_graph.node_link_graph(req['target'])
+    target_generated = generate(source, source_modified, target)
+    return json_graph.node_link_data(target_generated)
 
 @app.route('/')
 def hello_world():
