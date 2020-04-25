@@ -13,6 +13,7 @@ from MT.main import generate
 from models.S3 import search_similar_structures
 from subgraph.main import get_subgraph
 from models.utils import load_json_graph
+from models.layout import layout, nx_spring_layout
 
 app = Flask(__name__)
 CORS(app)
@@ -26,9 +27,9 @@ def generate_auto():
     #### markers ####
     # [[source id, target id], [], []]
     if 'markers' in req:
-        target_generated = generate(source, source_modified, target, markers=req['markers'])
+        target_generated,_ = generate(source, source_modified, target, markers=req['markers'])
     else:
-        target_generated = generate(source, source_modified, target)
+        target_generated,_ = generate(source, source_modified, target)
     return json_graph.node_link_data(target_generated)
 
 @app.route('/')

@@ -97,11 +97,13 @@ def generate(source_graph, deformed_source_graph, target_graph, markers=[]):
         markers[:, 0] = np.array([source_G.id2index[str(id)] for id in markers[:, 0]])
         markers[:, 1] = np.array([target_G.id2index[str(id)] for id in markers[:, 1]])
 
-    deformed_target_G, markers = generate_G(source_G, deformed_source_G, target_G, markers)
+    deformed_target_Gs, markers = generate_G(source_G, deformed_source_G, target_G, markers)
 
     markers[:, 0] = np.array([source_G.index2id[index] for index in markers[:, 0]])
     markers[:, 1] = np.array([target_G.index2id[index] for index in markers[:, 1]])
-    
+
+    deformed_target_G = deformed_target_Gs['FgmU']['deformed_target_G']
+
     return deformed_target_G.to_networkx(), markers.tolist()
 
 def generate_G(source_G, deformed_source_G, target_G, given_markers=[]):
@@ -111,8 +113,8 @@ def generate_G(source_G, deformed_source_G, target_G, given_markers=[]):
     raw_target_G = target_G.copy()
 
     ### force directed layout ###
-    fm3_source = layout(source_G.to_networkx())
-    fm3_target = layout(target_G.to_networkx())
+    fm3_source = nx_spring_layout(source_G.to_networkx())
+    fm3_target = nx_spring_layout(target_G.to_networkx())
     origin_fm3_source_G = Graph(fm3_source)
     origin_fm3_target_G = Graph(fm3_target)
 
