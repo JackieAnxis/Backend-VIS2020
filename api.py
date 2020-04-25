@@ -17,13 +17,15 @@ from models.utils import load_json_graph
 app = Flask(__name__)
 CORS(app)
 
-@app.route('/user-study/generate-auto')
+@app.route('/user-study/generate')
 def generate_auto():
     req = json.loads(request.data)
     source = json_graph.node_link_graph(req['source'])
     source_modified = json_graph.node_link_graph(req['sourceModified'])
     target = json_graph.node_link_graph(req['target'])
-    target_generated = generate(source, source_modified, target)
+    #### markers ####
+    # [[source id, target id], [], []]
+    target_generated = generate(source, source_modified, target, markers=req['markers'])
     return json_graph.node_link_data(target_generated)
 
 @app.route('/')
@@ -224,4 +226,7 @@ def apply_deformation_wholegraph():
     return new_G
 
 if __name__ == '__main__':
-    app.run()
+    app.run(
+        host='0.0.0.0',
+        port=7777,
+    )
