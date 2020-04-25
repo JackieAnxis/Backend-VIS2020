@@ -23,14 +23,15 @@ def hello_world():
     return 'Hello, World!'
 
 
-@app.route('/user-graph')
-def user_graph():
+@app.route('/user-graph/<int:index>')
+def user_graph(index):
     GRAPH_COUNT_IN_EACH_CASE = 4
 
     prefix = './data/user_study/'
     # index = 3
-    settings = json.loads(request.data)
-    index = int(settings['index'])
+    # settings = json.loads(request.data)
+    # index = int(settings['index'])
+    print(index)
     if index == -1:
         cases = []
         name = 'brain'
@@ -54,17 +55,23 @@ def user_graph():
     mode_sequence_choices = [[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0]]
     mode_sequence = mode_sequence_choices[index % len(mode_sequence_choices)]
     dataset_names = ['email_small', 'email_star', 'highschool_circle', 'highschool_complex', 'road', 'vis']
-    shuffle_dataset_names = random.shuffle(dataset_names)
+    random.shuffle(dataset_names)
+    shuffle_dataset_names  = dataset_names
     cases = []
     for name in shuffle_dataset_names:
         case = { 'name': name }
+        print(prefix + name + '/' + str(exemplar_index) + '.json')
         exemplar = load_json_graph(prefix + name + '/' + str(exemplar_index) + '.json')
         targets = []
         for i in range(GRAPH_COUNT_IN_EACH_CASE):
             if i != exemplar_index:
                 g = load_json_graph(prefix + name + '/' + str(i) + '.json')
-                targets.append(g)
-        case['exemplar'] = exemplar
+                raw = json.loads(json.dumps(json_graph.node_link_data((g))))
+                raw['id'] = i
+                targets.append(raw)
+        raw_exemplar = json.loads(json.dumps(json_graph.node_link_data(exemplar)))
+        raw_exemplar['id'] = exemplar_index
+        case['exemplar'] = raw_exemplar
         case['targets'] = targets
         cases.append(case)
 
