@@ -18,6 +18,17 @@ from models.layout import layout, nx_spring_layout
 app = Flask(__name__)
 CORS(app)
 
+@app.route('/user-study/time', methods=['POST'])
+def submit_time():
+    req = json.loads(request.data)
+    id = req['id']
+    time = req['time']
+    with open(f'./data/user_study/results/{id}.json', 'w') as f:
+        json.dump(time, f)
+    return {
+        'success': True
+    }
+
 @app.route('/user-study/generate', methods=['POST'])
 def generate_auto():
     req = json.loads(request.data)
