@@ -17,6 +17,14 @@ from models.utils import load_json_graph
 app = Flask(__name__)
 CORS(app)
 
+@app.route('/user-study/generate-auto')
+def generate_auto():
+    req = json.loads(request.data)
+    source = json_graph.node_link_graph(req['source'])
+    source_modified = json_graph.node_link_graph(req['sourceModified'])
+    target = json_graph.node_link_graph(req['target'])
+    target_generated = generate(source, source_modified, target)
+    return json_graph.node_link_data(target_generated)
 
 @app.route('/')
 def hello_world():
@@ -32,7 +40,7 @@ def user_graph(index):
     # settings = json.loads(request.data)
     # index = int(settings['index'])
     print(index)
-    if index == -1:
+    if index == 0:
         cases = []
         name = 'brain'
         case = {'name': name}
@@ -40,8 +48,13 @@ def user_graph(index):
         targets = []
         for i in range(1, GRAPH_COUNT_IN_EACH_CASE):
             g = load_json_graph(prefix + name + '/' + str(i) + '.json')
-            targets.append(g)
-        case['exemplar'] = exemplar
+            raw = json.loads(json.dumps(json_graph.node_link_data((g))))
+            raw['id'] = i
+            targets.append(raw)
+        
+        raw_exemplar = json.loads(json.dumps(json_graph.node_link_data(exemplar)))
+        raw_exemplar['id'] = 0 # tutorial exemplar id is 0
+        case['exemplar'] = raw_exemplar
         case['targets'] = targets
         cases.append(case)
 
