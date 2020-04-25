@@ -17,6 +17,14 @@ from models.utils import load_json_graph
 app = Flask(__name__)
 CORS(app)
 
+@app.route('user-study/time', methods=['POST'])
+def submit_time():
+    req = json.loads(request.data)
+    id = req['id']
+    time = req['time']
+    with open(f'/user-study/results/{id}.json') as f:
+        json.dump(time, f)
+
 @app.route('/user-study/generate', methods=['POST'])
 def generate_auto():
     req = json.loads(request.data)
