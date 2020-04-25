@@ -66,8 +66,12 @@ def user_graph(index):
         for i in range(GRAPH_COUNT_IN_EACH_CASE):
             if i != exemplar_index:
                 g = load_json_graph(prefix + name + '/' + str(i) + '.json')
-                targets.append(json.dumps(json_graph.node_link_data((g))))
-        case['exemplar'] = json.dumps(json_graph.node_link_data(exemplar))
+                raw = json.loads(json.dumps(json_graph.node_link_data((g))))
+                raw['id'] = i
+                targets.append(raw)
+        raw_exemplar = json.loads(json.dumps(json_graph.node_link_data(exemplar)))
+        raw_exemplar['id'] = exemplar_index
+        case['exemplar'] = raw_exemplar
         case['targets'] = targets
         cases.append(case)
 
