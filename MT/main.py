@@ -102,7 +102,7 @@ def generate(source_graph, deformed_source_graph, target_graph, markers=[]):
     markers[:, 0] = np.array([source_G.index2id[index] for index in markers[:, 0]])
     markers[:, 1] = np.array([target_G.index2id[index] for index in markers[:, 1]])
 
-    deformed_target_G = deformed_target_Gs['FgmU']['deformed_target_G']
+    deformed_target_G = deformed_target_Gs['Rrwm']['deformed_target_G']
 
     return deformed_target_G.to_networkx(), markers.tolist()
 
@@ -124,7 +124,7 @@ def generate_G(source_G, deformed_source_G, target_G, given_markers=[]):
         M = fgm(G1_node_link_data, G2_node_link_data)
 
     deformed_target_Gs = {}
-    names = ['FgmU']
+    names = ['Rrwm']
     for name in names:
         fm3_source_G = origin_fm3_source_G.copy()
         fm3_target_G = origin_fm3_target_G.copy()
