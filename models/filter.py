@@ -13,7 +13,7 @@ def relable_from_zero(g):
     return nx.relabel_nodes(g, label)
 
 if __name__ == '__main__':
-    dataset = 'highschool'
+    dataset = 'email'
     G = load_json_graph('./data/' + dataset + '/graph-with-pos.json')
     graphs = [G.subgraph(c) for c in nx.connected_components(G)]
     node = 29720 # 768(vis)

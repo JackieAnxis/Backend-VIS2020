@@ -9,3 +9,10 @@ venv/
 __pycache__
 */save/
 fgm/data/
+!data/user_study/brain/*
+!data/user_study/email_small/*
+!data/user_study/email_star/*
+!data/user_study/highschool_circle/*
+!data/user_study/highschool_complex/*
+!data/user_study/road/*
+!data/user_study/vis/*
