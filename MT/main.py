@@ -5,6 +5,7 @@ import os
 import random
 import shutil
 import sys
+import time
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 import numpy as np
@@ -19,7 +20,7 @@ from fgm.fgm import fgm
 from models.layout import tree_layout, radial_tree_layout, layout, MMM_layout, GEM_layout, nx_spring_layout, SM_layout, remove_overlap
 
 # names = ["Ga", "Pm", "Sm", "Smac", "Rrwm", "FgmU"] # ,"IpfpU", "IpfpS", "FgmD"]
-names = ["FgmU"] # ,"IpfpU", "IpfpS", "FgmD"]
+names = ["FgmU"]# "FgmU"] # ,"IpfpU", "IpfpS", "FgmD"]
 
 def markers2matrix(markers, n, m):
     mat = np.zeros((n, m))
@@ -113,8 +114,14 @@ def generate_G(source_G, deformed_source_G, target_G, given_markers=[]):
     raw_target_G = target_G.copy()
 
     ### force directed layout ###
+    # fm3_source = source_G.to_networkx()
+    # fm3_target = target_G.to_networkx()
+    time_start = time.time()
     fm3_source = nx_spring_layout(source_G.to_networkx())
     fm3_target = nx_spring_layout(target_G.to_networkx())
+    time_end = time.time()
+    print('time cost', time_end - time_start, 's')
+
     origin_fm3_source_G = Graph(fm3_source)
     origin_fm3_target_G = Graph(fm3_target)
 
