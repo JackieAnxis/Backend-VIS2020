@@ -171,7 +171,7 @@ def generate_G(source_G, deformed_source_G, target_G, given_markers=[]):
             new_markers = []
             neighbor_rate_threshold = 0.7
             distance_rate_threshold = 1.5
-            new_marker_rate_range = [0.1, 0.5]
+            new_marker_rate_range = [0.0, 1.2]
             eps = 1e-6
             while True:
                 new_markers = []
@@ -196,7 +196,7 @@ def generate_G(source_G, deformed_source_G, target_G, given_markers=[]):
                         continue
                     new_markers.append(marker_pair.tolist())
 
-                new_marker_rate = len(new_markers) / len(markers)
+                new_marker_rate = len(new_markers) / generated_markers.shape[0]
                 if new_marker_rate < new_marker_rate_range[0]:
                     neighbor_rate_threshold -= 0.1
                     distance_rate_threshold += 0.1
@@ -210,7 +210,7 @@ def generate_G(source_G, deformed_source_G, target_G, given_markers=[]):
                     distance_rate_threshold -= 0.1
                     neighbor_rate_threshold = np.min((0.9, neighbor_rate_threshold))
                     distance_rate_threshold = np.max((0, distance_rate_threshold))
-                    if distance_rate_threshold >= - eps and neighbor_rate_threshold <= 0.9 + eps:
+                    if distance_rate_threshold <= - eps and neighbor_rate_threshold >= 0.9 + eps:
                         break
                     print(new_marker_rate, neighbor_rate_threshold, distance_rate_threshold)
                 else:
@@ -238,7 +238,8 @@ def generate_G(source_G, deformed_source_G, target_G, given_markers=[]):
         e1 = mean_link_length(source_G)
         e3 = mean_link_length(deformed_source_G)
         scaled_target_G = target_G.copy()
-        scale = e3 / e1
+        e2 = mean_link_length(scaled_target_G)
+        scale = e3 / e2
         center = np.mean(scaled_target_G.nodes, axis=0)
         scaled_target_G.nodes = (scaled_target_G.nodes - center) * scale + center
 

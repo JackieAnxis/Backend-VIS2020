@@ -138,7 +138,7 @@ elseif tag == 2
     
     % FGM-U
     nAlg = nAlg + 1;
-    parFgmS = st('nItMa', 100, 'nAlp', 101, 'thAlp', 0, 'deb', 'n', 'ip', 'n');
+    parFgmS = st('nItMa', 50, 'nAlp', 51, 'thAlp', 0, 'deb', 'n', 'ip', 'n');
     pars{nAlg} = {parFgmS};
     algs{nAlg} = 'FGM-U';
     
