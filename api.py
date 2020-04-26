@@ -106,7 +106,7 @@ def user_graph(index):
         case['exemplar'] = raw_exemplar
         modified = load_json_graph(prefix + name + '/' + 'modified' + '.json')
         raw_modified = json.loads(json.dumps(json_graph.node_link_data(modified)))
-        raw_exemplar['id'] = exemplar_index
+        raw_modified['id'] = exemplar_index
         case['modified'] = raw_modified
         case['targets'] = targets
         cases.append(case)
