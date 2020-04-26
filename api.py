@@ -84,7 +84,7 @@ def user_graph(index):
     # exemplar_index = index % GRAPH_COUNT_IN_EACH_CASE
     exemplar_index = 0
     # mode_sequence_choices = [[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0]]
-    mode_sequence_choices = [[0, 1], [0, 1]]
+    mode_sequence_choices = [[0, 1], [1, 0]]
     mode_sequence = mode_sequence_choices[index % len(mode_sequence_choices)]
     dataset_names = ['brain', 'highschool_circle', 'highschool_complex', 'road', 'vis']
     random.shuffle(dataset_names)
