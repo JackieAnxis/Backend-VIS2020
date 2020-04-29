@@ -220,15 +220,47 @@ if __name__ == '__main__':
     eng = matlab.engine.start_matlab()
     eng.cd(r'./fgm', nargout=0)
     eng.addPath(nargout=0)
-    for interval in []
-    r = eng.readcmu()
-    G1EG = np.array(r['eg1'], dtype=np.int32)
-    G1PT = np.array(r['pt1'], dtype=np.float64)
-    G1 = build_nx_graph(G1EG[0], G1EG[1], G1PT[0], G1PT[1])
-    G2EG = np.array(r['eg2'], dtype=np.int32)
-    G2PT = np.array(r['pt2'], dtype=np.float64)
-    G2 = build_nx_graph(G2EG[0], G2EG[1], G2PT[0], G2PT[1])
-    ground_truth_matching = np.array(r['grt'])
+    # for interval in []
+    methods = ["Ga", "Pm", "Sm", "Smac", "IpfpU", "IpfpS", "Rrwm", "FgmU", "ours"]
+    N = 111
+    for interval in [1, 20, 40, 60, 80, 100]:
+        init_result = {
+            "precision": [],
+            "recall": []
+        }
+        for i in range(0, N):
+            print('rm_node_count, interval, i: ', 0, interval, i)
+            r = eng.readcmu(i + 1, (i + 1 + interval) % (N + 1) + 1, 0)
+            G1EG = np.array(r['eg1'], dtype=np.int32)
+            G1PT = np.array(r['pt1'], dtype=np.float64)
+            G1 = build_nx_graph(G1EG[0], G1EG[1], G1PT[0], G1PT[1])
+            G2EG = np.array(r['eg2'], dtype=np.int32)
+            G2PT = np.array(r['pt2'], dtype=np.float64)
+            G2 = build_nx_graph(G2EG[0], G2EG[1], G2PT[0], G2PT[1])
+            ground_truth_matching = np.array(r['grt'])
+
+            results = compute(G1, G2, ground_truth_matching)
+
+            prs = []
+            rcs = []
+            for method in methods:
+                prs.append(results[method]['precision'])
+                rcs.append(results[method]['recall'])
+            init_result['precision'].append(prs)
+            init_result['recall'].append(rcs)
+
+        with open('./data/correspondence_test/accuracy_cmum' + '_' + str(interval) + '_' + str(0) + '.csv', mode='w') as file:
+            writer = csv.writer(file, delimiter=',')
+            writer.writerow(methods)
+            for row in init_result['precision']:
+                writer.writerow(row)
+
+        with open('./data/correspondence_test/recall_cmum' + '_' + str(interval) + '_' + str(0) + '.csv', mode='w') as file:
+            writer = csv.writer(file, delimiter=',')
+            writer.writerow(methods)
+            for row in init_result['recall']:
+                writer.writerow(row)
+
 
 
 

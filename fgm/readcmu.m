@@ -8,17 +8,17 @@ function r = readcmu(frame1, frame2, rmc)
 %   create  -  Feng Zhou (zhfe99@gmail.com), 01-20-2012
 %   modify  -  Feng Zhou (zhfe99@gmail.com), 05-07-2013
 
-clear variables;
+% clear variables;
 prSet(1);
 
 %% src parameter
 test{1} = '1'
 test{2} = '2'
 tag = 'house';
-%pFs = [1 100]; % frame index
-%nIn = [30 30] - 2; % randomly remove 2 nodes
+% pFs = [1 100]; % frame index
+% nIn = [30 30] - 2; % randomly remove 2 nodes
 pFs = [frame1 frame2]; % frame index
-nIn = [30 30] - rmc; % randomly remove 2 nodes
+nIn = [30 30] - 0; % randomly remove 2 nodes
 parKnl = st('alg', 'cmum'); % type of affinity: only edge distance
 
 %% algorithm parameter
