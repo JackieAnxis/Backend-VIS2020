@@ -5,6 +5,7 @@ import os
 import random
 import shutil
 import sys
+import time
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 import numpy as np
@@ -19,7 +20,7 @@ from fgm.fgm import fgm
 from models.layout import tree_layout, radial_tree_layout, layout, MMM_layout, GEM_layout, nx_spring_layout, SM_layout, remove_overlap
 
 # names = ["Ga", "Pm", "Sm", "Smac", "Rrwm", "FgmU"] # ,"IpfpU", "IpfpS", "FgmD"]
-names = ["FgmU"] # ,"IpfpU", "IpfpS", "FgmD"]
+names = ["FgmU"]# "FgmU"] # ,"IpfpU", "IpfpS", "FgmD"]
 
 def markers2matrix(markers, n, m):
     mat = np.zeros((n, m))
@@ -113,8 +114,14 @@ def generate_G(source_G, deformed_source_G, target_G, given_markers=[]):
     raw_target_G = target_G.copy()
 
     ### force directed layout ###
+    # fm3_source = source_G.to_networkx()
+    # fm3_target = target_G.to_networkx()
+    time_start = time.time()
     fm3_source = nx_spring_layout(source_G.to_networkx())
     fm3_target = nx_spring_layout(target_G.to_networkx())
+    time_end = time.time()
+    print('time cost', time_end - time_start, 's')
+
     origin_fm3_source_G = Graph(fm3_source)
     origin_fm3_target_G = Graph(fm3_target)
 
@@ -162,66 +169,67 @@ def generate_G(source_G, deformed_source_G, target_G, given_markers=[]):
             SA = source_G.compute_adjacent_matrix()
             TA = target_G.compute_adjacent_matrix()
             new_markers = []
-            neighbor_rate_threshold = 0.7
-            distance_rate_threshold = 1.5
-            new_marker_rate_range = [0.1, 0.5]
+            neighbor_rate_threshold = 0.3 # 0.1
+            distance_rate_threshold = 10
+            # new_marker_rate_range = [0.0, 1.2]
             eps = 1e-6
-            while True:
-                new_markers = []
-                for marker_pair in markers:
-                    sm = marker_pair[0] # source marker
-                    tm = marker_pair[1] # target marker
-                    smn = np.nonzero(SA[sm])[0] # source marker neighbors
-                    tmn = np.nonzero(TA[tm])[0] # target marker neighbors
-                    smn2tm = np.nonzero(np.sum(markers_matrix[smn, :], axis=0))[0] # source marker neighbors' correspond target markers
-                    smn2tms = set(smn2tm)  # source marker neighbors' correspond target markers set
-                    tmns = set(tmn) # target marker neighbors set
-                    and_count = len(smn2tms & tmns)
-                    smmll = np.mean(np.sqrt(np.sum((source_G.nodes[[sm for i in range(len(smn))]] - source_G.nodes[smn]) ** 2, axis=1))) # source markers' mean edge length
-                    tmmll = np.mean(np.sqrt(np.sum((target_G.nodes[[tm for i in range(len(tmn))]] - target_G.nodes[tmn]) ** 2, axis=1)))  # target markers' mean edge length
-                    ### delete markers that links too much different neighbors ###
-                    if and_count < len(smn2tms) * neighbor_rate_threshold and and_count < len(tmn) * neighbor_rate_threshold:
-                        # need to be deleted
-                        continue
-                    ### delete markers that are far ###
-                    dis = np.sqrt(np.sum((fm3_source_G.nodes[sm] - fm3_target_G.nodes[tm])**2))
-                    if dis > smmll * distance_rate_threshold or dis > tmmll * distance_rate_threshold:
-                        continue
-                    new_markers.append(marker_pair.tolist())
+            # while True:
+            new_markers = []
+            for marker_pair in markers:
+                sm = marker_pair[0] # source marker
+                tm = marker_pair[1] # target marker
+                smn = np.nonzero(SA[sm])[0] # source marker neighbors
+                tmn = np.nonzero(TA[tm])[0] # target marker neighbors
+                smn2tm = np.nonzero(np.sum(markers_matrix[smn, :], axis=0))[0] # source marker neighbors' correspond target markers
+                smn2tms = set(smn2tm)  # source marker neighbors' correspond target markers set
+                tmns = set(tmn) # target marker neighbors set
+                and_count = len(smn2tms & tmns)
+                smmll = np.mean(np.sqrt(np.sum((fm3_source_G.nodes[[sm for i in range(len(smn))]] - fm3_source_G.nodes[smn]) ** 2, axis=1))) # source markers' mean edge length
+                tmmll = np.mean(np.sqrt(np.sum((fm3_target_G.nodes[[tm for i in range(len(tmn))]] - fm3_target_G.nodes[tmn]) ** 2, axis=1)))  # target markers' mean edge length
+                ### delete markers that links too much different neighbors ###
+                if and_count < len(smn2tms) * neighbor_rate_threshold and and_count < len(tmn) * neighbor_rate_threshold:
+                    # need to be deleted
+                    continue
+                ### delete markers that are far ###
+                dis = np.sqrt(np.sum((fm3_source_G.nodes[sm] - fm3_target_G.nodes[tm])**2))
+                if dis > smmll * distance_rate_threshold or dis > tmmll * distance_rate_threshold:
+                    continue
+                new_markers.append(marker_pair.tolist())
 
-                new_marker_rate = len(new_markers) / len(markers)
-                if new_marker_rate < new_marker_rate_range[0]:
-                    neighbor_rate_threshold -= 0.1
-                    distance_rate_threshold += 0.1
-                    neighbor_rate_threshold = np.max((0.3, neighbor_rate_threshold))
-                    distance_rate_threshold = np.min((5, distance_rate_threshold))
-                    if distance_rate_threshold >= 5 - eps and neighbor_rate_threshold <= 0.3 + eps:
-                        break
-                    print(new_marker_rate, neighbor_rate_threshold, distance_rate_threshold)
-                elif new_marker_rate > new_marker_rate_range[1]:
-                    neighbor_rate_threshold += 0.1
-                    distance_rate_threshold -= 0.1
-                    neighbor_rate_threshold = np.min((0.9, neighbor_rate_threshold))
-                    distance_rate_threshold = np.max((0, distance_rate_threshold))
-                    if distance_rate_threshold >= - eps and neighbor_rate_threshold <= 0.9 + eps:
-                        break
-                    print(new_marker_rate, neighbor_rate_threshold, distance_rate_threshold)
-                else:
-                    break
+                # new_marker_rate = len(new_markers) / generated_markers.shape[0]
+                # if new_marker_rate < new_marker_rate_range[0]:
+                #     neighbor_rate_threshold *= 0.9
+                #     distance_rate_threshold *= 1.1
+                #     neighbor_rate_threshold = np.max((0.3, neighbor_rate_threshold))
+                #     distance_rate_threshold = np.min((5, distance_rate_threshold))
+                #     if distance_rate_threshold >= 5 - eps and neighbor_rate_threshold <= 0.3 + eps:
+                #         break
+                #     print(new_marker_rate, neighbor_rate_threshold, distance_rate_threshold)
+                # elif new_marker_rate > new_marker_rate_range[1]:
+                #     neighbor_rate_threshold *= 1.1
+                #     distance_rate_threshold *= 0.9
+                #     neighbor_rate_threshold = np.min((0.9, neighbor_rate_threshold))
+                #     distance_rate_threshold = np.max((0, distance_rate_threshold))
+                #     if distance_rate_threshold <= - eps and neighbor_rate_threshold >= 0.9 + eps:
+                #         break
+                #     print(new_marker_rate, neighbor_rate_threshold, distance_rate_threshold)
+                # else:
+                #     break
 
             if len(new_markers) == 0:
                 print(name, 'failed!!')
-                continue # this method failed
 
-            new_markers = np.array(new_markers)
-            print('new markers rate: ', new_markers.shape[0] / markers.shape[0])
-            markers = new_markers
+                # continue # this method failed
+            else:
+                new_markers = np.array(new_markers)
+                print('new markers rate: ', new_markers.shape[0] / markers.shape[0])
+                markers = new_markers
 
         original_markers = markers.copy()
         ### build correspondence between the source and target ###
         while True: # until no new marker built
             fm3_reg_target_G = non_rigid_registration(fm3_source_G, fm3_target_G, markers, alpha=0, beta=5, gamma=1000, iter=1000)  # deformation
-            new_markers = build_correspondence_v4(fm3_source_G, fm3_reg_target_G, markers, step=2)  # matching
+            new_markers = build_correspondence_v4(fm3_source_G, fm3_reg_target_G, markers, step=1)  # matching
             fm3_target_G = fm3_reg_target_G
             if new_markers.shape[0] <= markers.shape[0]:
                 break
@@ -231,7 +239,8 @@ def generate_G(source_G, deformed_source_G, target_G, given_markers=[]):
         e1 = mean_link_length(source_G)
         e3 = mean_link_length(deformed_source_G)
         scaled_target_G = target_G.copy()
-        scale = e3 / e1
+        e2 = mean_link_length(scaled_target_G)
+        scale = e3 / e2
         center = np.mean(scaled_target_G.nodes, axis=0)
         scaled_target_G.nodes = (scaled_target_G.nodes - center) * scale + center
 
