@@ -220,8 +220,8 @@ if __name__ == '__main__':
     eng = matlab.engine.start_matlab()
     eng.cd(r'./fgm', nargout=0)
     eng.addPath(nargout=0)
-    for interval in []
-    r = eng.readcmu()
+    # for interval in []
+    r = eng.readcmu(1, 100, 2)
     G1EG = np.array(r['eg1'], dtype=np.int32)
     G1PT = np.array(r['pt1'], dtype=np.float64)
     G1 = build_nx_graph(G1EG[0], G1EG[1], G1PT[0], G1PT[1])
