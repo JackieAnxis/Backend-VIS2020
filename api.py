@@ -73,20 +73,26 @@ def user_graph(index):
         raw_exemplar['id'] = 0 # tutorial exemplar id is 0
         case['exemplar'] = raw_exemplar
         case['targets'] = targets
+        modified = load_json_graph(prefix + name + '/' + 'modified' + '.json')
+        raw_modified = json.loads(json.dumps(json_graph.node_link_data(modified)))
+        raw_modified['id'] = 0
+        case['modified'] = raw_modified
         cases.append(case)
 
         return {
             "index": index,
             "cases": cases,
-            "mode_sequence": [0, 1]
+            "mode_sequence": [0, 2, 1]
         }
 
     # exemplar_index = index % GRAPH_COUNT_IN_EACH_CASE
     exemplar_index = 0
     mode_sequence_choices = [[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0]]
     # mode_sequence_choices = [[0, 1], [1, 0]]
+    # mode_sequence_choices = [[1]]
     mode_sequence = mode_sequence_choices[index % len(mode_sequence_choices)]
     dataset_names = ['brain', 'highschool_circle', 'highschool_complex', 'road']
+    # dataset_names = ['highschool_complex']
     random.shuffle(dataset_names)
     shuffle_dataset_names  = dataset_names
     cases = []
