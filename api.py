@@ -15,6 +15,12 @@ from subgraph.main import get_subgraph
 from models.utils import load_json_graph
 from models.layout import layout, nx_spring_layout
 
+modified_targets = []
+prefix = './data/finan512/result/'
+for i in range(24):
+    path = prefix + 'deformed_target' + str(i) + '.json'
+    modified_targets.append(load_json_graph(path))
+
 target_nodes = [[16384, 16385, 16386, 16387, 16388, 16389, 16390, 16391, 16128, 16141, 16269, 16270, 16271, 16152, 16286, 16163,
       16297, 16174, 16308, 16057, 16185, 16319, 16196, 16381, 16071, 16072, 16073, 16202, 16330, 16375, 16383, 16341,
       16214, 16215, 16216, 16347, 16382, 16351, 16352, 16353, 16110, 16111, 16112, 16369, 16254, 16370, 16372, 16373,
@@ -190,6 +196,11 @@ def user_graph(index):
     }
 
 
+@app.route('/modified-exemplar')
+def modified_exemplar():
+    path = './data/finan512/result/interpolation2.json'
+    with open(path) as graph_data:
+        return json.load(graph_data)
 
 @app.route('/whole-graph')
 def whole_graph():
@@ -205,7 +216,9 @@ def whole_graph():
     # name = 'road-euroroad'
 
     # data_path = './data/' + name + '/graph.json'
-    data_path = './data/' + name + '/graph-with-pos.json'
+    # data_path = './data/' + name + '/graph-with-pos.json'
+    # data_path = './data/' + name + '/result/new.json'
+    data_path = './data/' + name + '/graph-with-pos-invert.json'
     # cluster_label = get_cluster_label()
     with open(data_path) as graph_data:
         return {
@@ -301,16 +314,39 @@ def apply_deformation():
     # Method3: using markers and others
     # correspondence = [] # (generate in deformation trasfer)
     # whole_graph_data = json_graph.node_link_graph(settings['wholeGraphData'])
-    source_graph = json_graph.node_link_graph(settings['sourceGraph'])
-    deformed_source_graph = json_graph.node_link_graph(settings['_sourceGraph'])
+    # source_graph = json_graph.node_link_graph(settings['sourceGraph'])
+    # deformed_source_graph = json_graph.node_link_graph(settings['_sourceGraph'])
     target_graph = json_graph.node_link_graph(settings['targetGraph'])
     # deformed_target_graph_network = generate(source_graph, deformed_source_graph, target_graph, markers)
-    deformed_target_graph_network = generate(source_graph, deformed_source_graph, target_graph)
-    deformed_target_graph = json_graph.node_link_data(deformed_target_graph_network)
-    return deformed_target_graph
+    # deformed_target_graph_network = generate(source_graph, deformed_source_graph, target_graph)
+    # deformed_target_graph = json_graph.node_link_data(deformed_target_graph_network)
 
-@app.route('/apply-deformation-wholegraph', methods=['POST'])
+    res = None
+    for i, t in enumerate(modified_targets):
+        # print(len(target_graph.nodes))
+        # print(len(t.nodes))
+        n = list(target_graph.nodes)[0]
+        if t.has_node(str(n)):
+        # if inter:
+            res = t
+            print(i)
+            break
+    return json_graph.node_link_data(res)
+    # return json_graph.node_link_data(modified_targets[3])
+
+@app.route('/apply-deformation-wholegraph')
 def apply_deformation_wholegraph():
+    name='finan512'
+    data_path = './data/' + name + '/result/new.json'
+    # data_path = './data/' + name + '/graph-with-pos-invert.json'
+    # cluster_label = get_cluster_label()
+    with open(data_path) as graph_data:
+        graph = json.load(graph_data)
+        return {
+            "name": name,
+            "data": graph
+            # "cluster": cluster_label
+        }
     settings = json.loads(request.data)
     whole_graph_data = json_graph.node_link_graph(settings['wholeGraphData'])
     deformed_target_graphs = settings['deformedTargetGraph']

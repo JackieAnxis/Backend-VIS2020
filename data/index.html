@@ -32,6 +32,7 @@
     </svg>
     <script src="./d3.v4.min.js"></script>
     <script>
+        /*
         let path = './user_study/'
         for (let i = 0; i < 4; i++) {
             addGraph(`brain/${i}`, 200 + i * 150, 50, 100, 100)
@@ -53,6 +54,7 @@
             addGraph(`highschool_complex/${i}`, 200 + i * 150, 700, 100, 100)
         }
         addGraph(`highschool_complex/modified`, 200 + 4 * 150, 700, 100, 100)
+        */
 
         // let path = './correspondence_test/'
         // addGraph('cmum1', 50, 50, 300, 300)
@@ -74,7 +76,7 @@
         // let path = './price/';
         // let path = './visbrazil/'
         // let path = './synthetic/';
-        // let path = './finan512/';
+        let path = './finan512/';
         // let path = './highschool/';
 
         // ["asgGa",
@@ -94,7 +96,6 @@
         // addGraph('result/pos', 50, 50, 800, 800)
         // addGraph('result/_new', 50, 1000, 800, 800)
         // addGraph('result/new', 1050, 1000, 800, 800)
-        /*
         let names = ["Ga", "Pm", "Sm", "Smac", "Rrwm", "FgmU"]
         let n = 25 // target count
         let m = 6 // interpolation count
@@ -107,11 +108,11 @@
             addGraph('result/aligned_target' + i, 1000 + (i + 1) * 150, 200, 100, 100)
             for (let j = 0; j <= m; j++) {
                 let name = names[j]
-                addGraph('result/deformed_target' + i + '_' + name, 1000 + (i + 1) * 150, 200 + (j + 1) * 150, 100, 100)
+                addGraph('result/deformed_target' + i, 1000 + (i + 1) * 150, 200 + (j + 1) * 150, 100, 100)
             }
             addGraph('result/deformed_target' + i, 1000 + (i + 1) * 150, 200 + (m + 2) * 150, 100, 100)
         }
-*/
+
         let flag = false
         window.onkeypress = function (e) {
             if (e.charCode == 116) { // T
