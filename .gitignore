@@ -8,6 +8,8 @@ venv/
 *.csv
 __pycache__
 */save/
+*.zip
+*.mexw64
 fgm/data/
 data/user_study/results/
 !data/user_study/brain/*

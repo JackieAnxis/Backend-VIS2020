@@ -221,7 +221,6 @@ if __name__ == '__main__':
     eng.cd(r'./fgm', nargout=0)
     eng.addPath(nargout=0)
     # for interval in []
-<<<<<<< HEAD
     methods = ["Ga", "Pm", "Sm", "Smac", "IpfpU", "IpfpS", "Rrwm", "FgmU", "ours"]
     N = 111
     for interval in [1, 20, 40, 60, 80, 100]:
@@ -262,16 +261,6 @@ if __name__ == '__main__':
             for row in init_result['recall']:
                 writer.writerow(row)
 
-=======
-    r = eng.readcmu(1, 100, 2)
-    G1EG = np.array(r['eg1'], dtype=np.int32)
-    G1PT = np.array(r['pt1'], dtype=np.float64)
-    G1 = build_nx_graph(G1EG[0], G1EG[1], G1PT[0], G1PT[1])
-    G2EG = np.array(r['eg2'], dtype=np.int32)
-    G2PT = np.array(r['pt2'], dtype=np.float64)
-    G2 = build_nx_graph(G2EG[0], G2EG[1], G2PT[0], G2PT[1])
-    ground_truth_matching = np.array(r['grt'])
->>>>>>> 4e1ad8ddcc55c0c31c5a8b43285740799b73397d
 
 
 
